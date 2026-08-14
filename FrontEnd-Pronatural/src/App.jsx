@@ -37,10 +37,14 @@ import AdminReviews from './frontend-admin/pages/AdminReviews';
 import AdminDashboard from './frontend-admin/pages/AdminDashboard';
 import { ADMIN_PREFIX } from './config';
 
+import NotFound from './frontend-clientes/pages/NotFound';
+import ErrorBoundary from './components/common/ErrorBoundary';
+
 function App() {
   return (
-    <AuthProvider>
-      <GlobalDataProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <GlobalDataProvider>
         <CartProvider>
           <BrowserRouter>
             <Toaster
@@ -56,39 +60,38 @@ function App() {
               }}
             />
             <Routes>
+              {/* Rutas de autenticación de clientes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/recover" element={<RecoverPassword />} />
+
+              {/* Rutas de autenticación de administración */}
               <Route path={`${ADMIN_PREFIX}/login`} element={<AdminLogin />} />
               <Route path={`${ADMIN_PREFIX}/register`} element={<AdminRegister />} />
               <Route path={`${ADMIN_PREFIX}/recover`} element={<AdminRecoverPassword />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute allowedRoles={['Customer', 'Admin', 'Employee']}>
-                    <PublicLayout />
-                  </ProtectedRoute>
-                }
-              >
+
+              {/* Tienda de Clientes (Acceso público libre para explorar la web) */}
+              <Route path="/" element={<PublicLayout />}>
                 <Route index element={<Landing />} />
+                <Route path="catalogo" element={<Catalog />} />
                 <Route path="acerca" element={<About />} />
                 <Route path="contacto" element={<Contact />} />
                 <Route path="resenas" element={<Reviews />} />
-                <Route path="perfil" element={<Profile />} />
                 <Route path="producto/:id" element={<ProductDetail />} />
                 <Route path="carrito" element={<Cart />} />
-                <Route path="pago" element={<Checkout />} />
                 <Route path="whatsapp-order" element={<WhatsappOrder />} />
+                <Route path="perfil" element={<Profile />} />
+                <Route
+                  path="pago"
+                  element={
+                    <ProtectedRoute allowedRoles={['Customer', 'Admin', 'Employee']}>
+                      <Checkout />
+                    </ProtectedRoute>
+                  }
+                />
               </Route>
-              <Route
-                element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee', 'Customer']}>
-                    <MainLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/catalogo" element={<Catalog />} />
-              </Route>
+
+              {/* Rutas de administración y vendedores */}
               <Route
                 element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}>
@@ -102,7 +105,7 @@ function App() {
                 <Route path={`${ADMIN_PREFIX}/catalogo`} element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']}><AdminCatalog /></ProtectedRoute>
                 } />
-                <Route path="/inventario" element={
+                <Route path={`${ADMIN_PREFIX}/inventario`} element={
                   <ProtectedRoute allowedRoles={['Admin']}><InventoryManagement /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/vendedores`} element={
@@ -111,19 +114,19 @@ function App() {
                 <Route path={`${ADMIN_PREFIX}/clientes`} element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']}><AdminCustomers /></ProtectedRoute>
                 } />
-                <Route path="/reportes" element={
+                <Route path={`${ADMIN_PREFIX}/reportes`} element={
                   <ProtectedRoute allowedRoles={['Admin']}><Reports /></ProtectedRoute>
                 } />
-                <Route path="/vendedor" element={
+                <Route path={`${ADMIN_PREFIX}/vendedor`} element={
                   <ProtectedRoute allowedRoles={['Employee']}><VendorDashboard /></ProtectedRoute>
                 } />
-                <Route path="/ventas/registrar" element={
+                <Route path={`${ADMIN_PREFIX}/ventas/registrar`} element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']}><SalesEntry /></ProtectedRoute>
                 } />
-                <Route path="/ventas/historial" element={
+                <Route path={`${ADMIN_PREFIX}/ventas/historial`} element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']}><SalesHistory /></ProtectedRoute>
                 } />
-                <Route path="/ajustes" element={
+                <Route path={`${ADMIN_PREFIX}/ajustes`} element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']}><Settings /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/categorias`} element={
@@ -135,12 +138,15 @@ function App() {
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']}><AdminReviews /></ProtectedRoute>
                 } />
               </Route>
-              <Route path="*" element={<Navigate to="/register" replace />} />
+
+              {/* Ruta de error 404 para URLs no encontradas */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </CartProvider>
       </GlobalDataProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
 export default App;
