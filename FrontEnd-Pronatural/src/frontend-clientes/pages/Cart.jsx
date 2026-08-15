@@ -1,11 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
+import { useGlobalData } from '../../context/GlobalDataContext';
 import { getCloudinaryUrl } from '../../utils/cloudinary';
+
 export default function Cart() {
   const { items, removeItem, updateQuantity, clearCart, subtotal } = useCart();
+  const { config } = useGlobalData();
   const navigate = useNavigate();
-  const shipping = items.length > 0 ? 12.00 : 0;
-  const total = subtotal + shipping;
+
+  const deliveryFee = config?.deliveryFee ?? 3.50;
+  const taxRate = config?.taxRate ?? 0;
+
+  const shipping = items.length > 0 ? deliveryFee : 0;
+  const taxes = (subtotal * taxRate) / 100;
+  const total = subtotal + shipping + taxes;
   return (
     <div className="min-h-[calc(100vh-80px)] bg-[#fdfaf6]">
       <div className="border-b border-gray-100 px-5 md:px-12 lg:px-24 py-8 md:py-16">
@@ -179,15 +187,6 @@ export default function Cart() {
                 <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Proceder al pago</span>
                 <svg className="w-4 h-4 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path>
-                </svg>
-              </button>
-              <button
-                onClick={() => navigate('/whatsapp-order')}
-                className="w-full bg-white border border-[#0a2016] text-[#0a2016] flex justify-between items-center px-8 py-5 hover:bg-gray-50 transition-colors group cursor-pointer"
-              >
-                <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Pedir por WhatsApp</span>
-                <svg className="w-4 h-4 text-[#25D366] transform group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
-                   <path d="M12.031 0C5.385 0 0 5.386 0 12.03c0 2.128.552 4.195 1.6 6.014L.045 23.955l6.064-1.589A12.006 12.006 0 0012.031 24c6.645 0 12.031-5.385 12.031-12.03S18.677 0 12.031 0zm0 22.015c-1.8 0-3.565-.483-5.112-1.4l-.367-.217-3.8.995 1.015-3.705-.238-.378C2.476 15.545 1.969 13.82 1.969 12.03 1.969 6.486 6.487 1.984 12.031 1.984c5.543 0 10.046 4.502 10.046 10.046 0 5.543-4.503 10.046-10.046 9.985zM17.54 14.5c-.302-.152-1.794-.886-2.073-.988-.278-.101-.481-.152-.684.152-.202.304-.783.988-.961 1.19-.177.203-.354.228-.657.076-1.547-.768-2.684-1.391-3.712-2.73-.243-.316-.011-.476.128-.642.278-.335.532-.614.733-.842.152-.178.203-.304.304-.507.101-.203.05-.38-.026-.532-.076-.152-.683-1.646-.936-2.253-.247-.594-.499-.513-.684-.523h-.583c-.202 0-.532.076-.811.38-.278.304-1.064 1.04-1.064 2.533 0 1.494 1.089 2.937 1.24 3.14.152.203 2.14 3.266 5.187 4.582 2.215.955 2.879.882 3.424.743.619-.158 1.794-.734 2.047-1.443.253-.71.253-1.317.177-1.443-.075-.126-.277-.202-.581-.354z"></path>
                 </svg>
               </button>
             </div>

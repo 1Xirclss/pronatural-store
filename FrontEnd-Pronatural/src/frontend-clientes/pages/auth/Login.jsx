@@ -30,25 +30,23 @@ export default function Login() {
         alt="Coffee Beans" 
         className="absolute inset-0 w-full h-full object-cover opacity-90"
       />
-      <div className="absolute inset-0 bg-black/30"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40"></div>
       <div className="absolute top-12 left-12 z-10">
         <h1 className="text-white text-[22px] font-bold tracking-tighter">PRONATURAL</h1>
       </div>
-      <div className="absolute bottom-12 left-12 z-10">
-        <p className="text-gray-300 text-[9px] font-semibold tracking-[0.2em] uppercase">PRO NATURAL TECHNICAL ARCHIVE</p>
-        <p className="text-gray-400 text-[9px] tracking-[0.2em] uppercase mt-1.5">REF NO: PN-0013 / ORIGIN: ETHIOPIA</p>
+      <div className="absolute bottom-12 left-12 z-10 max-w-sm">
+        <p className="text-[#4ade80] text-[10px] font-bold tracking-[0.2em] uppercase mb-1">Bienvenido de nuevo</p>
+        <p className="text-white text-[13px] font-medium leading-relaxed opacity-90">Ingresa a tu cuenta para gestionar tus compras y preferencias.</p>
       </div>
     </>
   );
   return (
     <AuthLayout leftPanel={leftPanel}>
-      <div className="mb-12">
-        <p className="text-[10px] font-bold text-orange-700 tracking-widest uppercase mb-4">Acceder a tu cuenta</p>
-        <h2 className="text-[44px] font-bold leading-none tracking-tighter text-brand-dark">LOG IN</h2>
-        <p className="text-[13px] text-gray-600 mt-5 leading-relaxed max-w-sm">
-          Introduce tus credenciales autorizadas<br/>
-          para acceder a datos técnicos<br/>
-          seleccionados y recopilar registros.
+      <div className="mb-10">
+        <p className="text-[10px] font-bold text-[#30b466] tracking-widest uppercase mb-2">Acceso a Clientes</p>
+        <h2 className="text-[36px] font-bold leading-none tracking-tighter text-brand-dark mb-3">INICIAR SESIÓN</h2>
+        <p className="text-[12px] text-gray-500 font-medium leading-relaxed max-w-sm">
+          Introduce tus datos para acceder a tu perfil personal en ProNatural.
         </p>
       </div>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -56,7 +54,7 @@ export default function Login() {
           <label className="block text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase mb-2">Correo Electrónico</label>
           <input
             type="email"
-            placeholder="curator@archive.com"
+            placeholder="usuario@ejemplo.com"
             {...register('email', { 
               required: 'El correo es requerido', 
               pattern: { 
@@ -94,25 +92,21 @@ export default function Login() {
             disabled={isSubmitting}
             className="w-full bg-[#0a2016] text-white text-[10px] font-bold tracking-[0.2em] uppercase py-4 hover:bg-[#123827] transition-colors disabled:opacity-70 cursor-pointer"
           >
-            {isSubmitting ? 'Verificando...' : 'Acceder al inicio'}
+            {isSubmitting ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
           </button>
         </div>
         <div className="flex items-center justify-between pt-8 mt-8 border-t border-gray-100">
-          <Link to="/recover" className="text-[9px] font-semibold tracking-widest text-gray-400 hover:text-brand-dark uppercase max-w-[120px] leading-[1.6]">
-            ¿Olvidaste tu<br/>contraseña?
+          <Link to="/recover" className="text-[10px] font-semibold tracking-widest text-gray-500 hover:text-brand-dark uppercase leading-[1.6]">
+            ¿Olvidaste tu contraseña?
           </Link>
-          <Link to="/register" className="text-[9px] font-bold tracking-widest text-orange-700 hover:text-orange-800 uppercase">
+          <Link to="/register" className="text-[10px] font-bold tracking-widest text-[#30b466] hover:text-[#1b4332] uppercase">
             Crear cuenta
           </Link>
         </div>
       </form>
-      <div className="mt-20">
-        <p className="flex items-center text-[8px] tracking-[0.15em] text-gray-400 uppercase mb-2.5">
-          <svg className="w-3.5 h-3.5 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          End-to-end archival security
-        </p>
-        <p className="text-[7px] tracking-[0.15em] text-gray-300 uppercase">
-          © 2024 Pro Natural Technical Archive. System version 4.0.1
+      <div className="mt-12 pt-4 border-t border-gray-100">
+        <p className="text-[10px] text-gray-400">
+          © ProNatural Store. Pasión por la naturaleza.
         </p>
       </div>
     </AuthLayout>

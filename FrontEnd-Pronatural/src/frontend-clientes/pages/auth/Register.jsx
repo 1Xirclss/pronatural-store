@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { api } from '../../../utils/api';
 import AuthLayout from '../../../components/layout/AuthLayout';
 import toast from 'react-hot-toast';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { isValidPhoneNumber } from '../../../utils/phoneFormatter';
+import PhoneInputField from '../../../components/common/PhoneInputField';
+
 export default function Register() {
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, watch, control, formState: { errors, isSubmitting } } = useForm();
   const { registerCustomer } = useAuth();
   const navigate = useNavigate();
   const password = watch('password');
@@ -46,32 +49,45 @@ export default function Register() {
   };
 
   const leftPanel = (
-    <div className="absolute inset-0 bg-[#0e2a1b] flex flex-col items-center justify-center overflow-hidden">
-      <div className="absolute top-12 left-12 z-10">
+    <div className="absolute inset-0 bg-[#082214] flex flex-col justify-between p-10 lg:p-14 overflow-hidden select-none">
+      {/* Esferas de luz animadas sutiles en el fondo */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#30b466]/15 rounded-full blur-[100px] animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#1b4332]/30 rounded-full blur-[120px] animate-pulse duration-1000"></div>
+
+      {/* Header Logo */}
+      <div className="relative z-10">
         <h1 className="text-white text-[22px] font-bold tracking-tighter">PRONATURAL</h1>
       </div>
-      <div className="relative z-0 flex flex-col items-center opacity-10 transform -rotate-12 scale-150 pointer-events-none">
-        <span className="text-9xl font-serif italic text-white whitespace-nowrap">Safe</span>
-        <span className="text-9xl font-serif italic text-white whitespace-nowrap ml-20">work</span>
-      </div>
-      <div className="absolute bottom-40 w-full text-center z-10 opacity-30">
-        <p className="text-white text-4xl font-serif tracking-widest">safe work</p>
-      </div>
-      <div className="absolute bottom-12 left-12 z-10">
-        <p className="text-[#84a592] text-[9px] tracking-[0.2em] uppercase">Establecido MMXXIV</p>
-        <h2 className="text-white text-[42px] font-bold leading-[0.95] tracking-tighter mt-4 max-w-[340px]">
-          Acceso al Inicio concedido al registrarse
+
+      {/* Hero content elegante y limpio */}
+      <div className="relative z-10 max-w-lg my-auto">
+        <span className="inline-block text-[#4ade80] text-[10px] font-bold tracking-[0.25em] uppercase mb-4">
+          Salud y Bienestar Orgánico
+        </span>
+
+        <h2 className="text-white text-[38px] lg:text-[44px] font-bold leading-[1.08] tracking-tighter mb-4">
+          Descubre el poder de lo <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4ade80] to-[#30b466]">100% Natural</span>
         </h2>
+
+        <p className="text-gray-300 text-[14px] leading-relaxed opacity-90 max-w-md">
+          Únete a nuestra comunidad para acceder a productos orgánicos seleccionados, seguimiento de pedidos y beneficios exclusivos.
+        </p>
+      </div>
+
+      {/* Footer copyright */}
+      <div className="relative z-10 flex items-center justify-between text-gray-400 text-[11px]">
+        <p className="tracking-wider">© ProNatural Store</p>
+        <p className="text-[#4ade80] font-medium tracking-wider">Cuidando tu salud naturalmente</p>
       </div>
     </div>
   );
   return (
     <AuthLayout leftPanel={leftPanel}>
       <div className="mb-10">
-        <p className="text-[10px] font-bold text-orange-700 tracking-widest uppercase mb-4">Registro Técnico</p>
-        <h2 className="text-[38px] font-bold leading-none tracking-tighter text-brand-dark mb-4">CREAR CUENTA</h2>
-        <p className="text-[10px] text-gray-500 font-semibold tracking-widest uppercase leading-relaxed max-w-sm">
-          ÚNETE AL REGISTRO PARA ACCESO PRIORITARIO A LANZAMIENTOS DE MICRO-LOTES
+        <p className="text-[10px] font-bold text-[#30b466] tracking-widest uppercase mb-2">Registro de Cliente</p>
+        <h2 className="text-[36px] font-bold leading-none tracking-tighter text-brand-dark mb-3">CREAR CUENTA</h2>
+        <p className="text-[12px] text-gray-500 font-medium leading-relaxed max-w-sm">
+          Completa tus datos para registrarte en ProNatural.
         </p>
       </div>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -105,6 +121,25 @@ export default function Register() {
             className={`w-full bg-transparent border-b ${errors.email ? 'border-red-500' : 'border-gray-200'} py-2 text-[13px] focus:outline-none focus:border-brand-dark transition-colors lowercase`}
           />
           {errors.email && <p className="text-red-500 text-[10px] mt-1.5">{errors.email.message}</p>}
+        </div>
+        <div>
+          <label className="block text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase mb-2">Número de Teléfono</label>
+          <Controller
+            name="phone"
+            control={control}
+            rules={{
+              required: 'El teléfono es requerido',
+              validate: (val) => isValidPhoneNumber(val) || 'El teléfono debe tener 8 dígitos (ej: +503 7000-0000)'
+            }}
+            render={({ field }) => (
+              <PhoneInputField
+                value={field.value || ''}
+                onChange={field.onChange}
+                error={errors.phone?.message}
+                darkTheme={false}
+              />
+            )}
+          />
         </div>
         <div>
           <label className="block text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase mb-2">Contraseña Encriptada</label>
@@ -163,19 +198,20 @@ export default function Register() {
             {isSubmitting ? 'Registrando...' : 'Registrar Cuenta'}
           </button>
         </div>
-        <div className="text-center pt-8 border-t border-gray-100 mt-8 relative">
+        <div className="text-center pt-8 border-t border-gray-100 mt-8 relative flex flex-col items-center gap-3">
           <span className="bg-brand-bg px-4 text-[9px] tracking-widest text-gray-300 absolute -top-[7px] left-1/2 -translate-x-1/2 uppercase">¿Ya registrado?</span>
-          <Link to="/login" className="inline-block mt-4 text-[10px] font-bold tracking-[0.15em] text-brand-dark hover:text-gray-600 uppercase">
-            Acceder a perfil<br/>existente
+          <Link to="/login" className="inline-block mt-3 text-[10px] font-bold tracking-[0.15em] text-brand-dark hover:text-gray-600 uppercase">
+            Acceder a perfil existente
+          </Link>
+          <div className="w-12 h-[1px] bg-gray-200 my-1"></div>
+          <Link to="/" className="inline-block text-[10px] font-bold tracking-[0.15em] text-[#30b466] hover:text-[#1b4332] uppercase transition-colors">
+            Continuar como invitado →
           </Link>
         </div>
       </form>
-      <div className="mt-16">
-        <p className="text-[8px] font-bold text-brand-dark uppercase tracking-widest mb-1.5">PROTOCOLO DE DATOS:</p>
-        <p className="text-[6px] tracking-widest text-gray-400 uppercase leading-[1.6]">
-          TODA LA INFORMACIÓN SE ALMACENA BAJO LA LEY DE RETENCIÓN.<br/>
-          LA REPRESENTACIÓN DEL ARCHIVO ES PROPIETARIA.<br/>
-          ACEPTAS RECIBIR ACTUALIZACIONES TÉCNICAS, DE CURADURÍA Y NOTIFICACIONES DE MICRO-LOTES.
+      <div className="mt-10 pt-4 border-t border-gray-100">
+        <p className="text-[10px] text-gray-400 leading-normal">
+          Al registrarte aceptas las políticas de privacidad y condiciones de uso de ProNatural.
         </p>
       </div>
       {showVerifyModal && (

@@ -6,6 +6,12 @@ export default function About() {
 
   // validacion para url del mapa
   let validMapUrl = c.mapUrl;
+  if (validMapUrl) {
+    const match = validMapUrl.match(/src=["']([^"']+)["']/i);
+    if (match && match[1]) {
+      validMapUrl = match[1];
+    }
+  }
   if (validMapUrl && !validMapUrl.includes('/embed') && !validMapUrl.includes('output=embed')) {
     validMapUrl = "https://maps.google.com/maps?q=Pronatural%20S.A.%20de%20C.V.&t=&z=15&ie=UTF8&iwloc=&output=embed";
   }

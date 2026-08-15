@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
 import { toast } from 'react-hot-toast';
 import { useGlobalData } from '../../context/GlobalDataContext';
+import { buildProfessionalWhatsAppMessage } from '../../utils/whatsappHelper';
 
 export default function WhatsappOrder() {
   const { items, subtotal, clearCart } = useCart();
@@ -22,7 +23,7 @@ export default function WhatsappOrder() {
         quantity: item.quantity
       }));
 
-      await addSale({
+      const savedSale = await addSale({
         customerId: null,
         products: formattedProducts,
         total: total,
@@ -31,17 +32,24 @@ export default function WhatsappOrder() {
         notes: 'Pedido iniciado directamente vía botón de WhatsApp'
       });
 
-      let message = `¡Hola! Me gustaría realizar un pedido:\n\n`;
-      items.forEach(item => {
-        message += `- ${item.quantity}x ${item.name || item.title} ($${(item.price * item.quantity).toFixed(2)})\n`;
+      const saleId = savedSale?._id || savedSale?.id || '';
+
+      const message = buildProfessionalWhatsAppMessage({
+        saleId,
+        items,
+        subtotal,
+        shipping,
+        total,
+        customerData: {
+          name: 'Cliente Tienda Web',
+          address: 'Por coordinar vía WhatsApp',
+          email: 'Por coordinar',
+          phone: 'Por coordinar'
+        }
       });
-      message += `\nSubtotal: $${subtotal.toFixed(2)}`;
-      message += `\nEnvío: $${shipping.toFixed(2)}`;
-      message += `\n*TOTAL: $${total.toFixed(2)}*\n\n`;
-      message += `¿Cuáles son los pasos a seguir?`;
 
       const encodedMessage = encodeURIComponent(message);
-      const whatsappNumber = c.whatsapp || "50369674467";
+      const whatsappNumber = (c.whatsapp || "50369674467").replace(/[^0-9]/g, '');
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
 
       clearCart();

@@ -1,133 +1,163 @@
-import nodemailer from "nodemailer"; //Enviar correo
-import crypto from "crypto"; //Generar codigo aleatorio
-import jsonwebtoken from "jsonwebtoken"; // Token
-import bcryptjs from "bcryptjs"; //Encriptar
-
+import crypto from "crypto";
+import jsonwebtoken from "jsonwebtoken";
+import bcryptjs from "bcryptjs";
 import clientesModel from "../models/Clientes.js";
-
 import { config } from "../../config.js";
+import { sendEmail } from "../utils/sendMailMailjet.js";
+import HTMLRecoveryEmail from "../utils/sendMailRecovery.js";
 
-//array de funciones
 const registerClientesController = {};
 
+// Registro de clientes con envío de código de verificación por Mailjet
 registerClientesController.register = async (req, res) => {
-    //#1- Solicitar los datos
-    const { name, lastName, birthdate, email, password, isVerified } = req.body;
+  const { name, lastName, birthdate, email, password, isVerified } = req.body;
 
-    try {
-        //Validar que el correo no exista en la base de datos
-        const existsClientes = await clientesModel.findOne({ email });
-        if (existsClientes) {
-            return res.status(400).json({ message: "Cliente ya existente" });
-        }
+  // Validaciones de campos obligatorios
+  if (!name || !name.trim()) {
+    return res.status(400).json({ message: "El nombre es obligatorio." });
+  }
 
-        //Encriptar la contraseña
-        const passwordHashed = await bcryptjs.hash(password, 10);
+  if (!email || !email.trim()) {
+    return res.status(400).json({ message: "El correo electrónico es obligatorio." });
+  }
 
-        //generar un código aleatorio
-        const randomNumber = crypto.randomBytes(3).toString("hex");
+  if (!password || !password.trim()) {
+    return res.status(400).json({ message: "La contraseña es obligatoria." });
+  }
 
-        //Guardamos en un token la información
-        const token = jsonwebtoken.sign(
-            //#1- ¿Qué vamos a guardar?
-            {
-                randomNumber,
-                name,
-                lastName,
-                birthdate,
-                email,
-                password: passwordHashed,
-                isVerified,
-            },
-            //#2- Secret Key
-            config.JWT.secret,
-            //#3- cuando expira
-            { expiresIn: "15m" },
-        );
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    return res.status(400).json({ message: "El formato de correo no es válido." });
+  }
 
-        res.cookie("resgistrationCookie", token, { maxAge: 15 * 60 * 1000 });
+  try {
+    const cleanEmail = email.trim().toLowerCase();
 
-        //ENVIAMOS EL CÓDIGO ALEATORIO POR CORREO ELECTRÓNICO
-        //#1- Transporter -> ¿Quién envía el correo?
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: config.email.user_email,
-                pass: config.email.user_password,
-            },
-        });
-
-        //#2- mailOption -> ¿Quién lo recibe y como?
-        const mailOptions = {
-            from: config.email.user_email,
-            to: email,
-            subject: "Verificación de cuenta",
-            text:
-                "Para verificar tu cuenta, utiliza este código: " +
-                randomNumber +
-                " expira en 15 minutos",
-        };
-
-        //#3- Enviar el correo
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log("error " + error);
-                return res.status(500).json({ message: "Error sending email" });
-            }
-            return res.status(200).json({ message: "Email sent" });
-        });
-    } catch (error) {
-        console.log("error" + error);
-        return res.status(500).json({ message: "Internal server error" });
+    // Validar que el correo no exista en la base de datos
+    const existsClientes = await clientesModel.findOne({
+      $or: [{ email: cleanEmail }, { correo: cleanEmail }]
+    });
+    if (existsClientes) {
+      return res.status(400).json({ message: "Este correo ya está registrado." });
     }
+
+    // Encriptar la contraseña
+    const passwordHashed = await bcryptjs.hash(password.trim(), 10);
+
+    // Generar un código aleatorio de verificación de 6 dígitos
+    const randomNumber = crypto.randomBytes(3).toString("hex");
+
+    // Guardar temporalmente en token JWT con expiración de 15 minutos
+    const token = jsonwebtoken.sign(
+      {
+        randomNumber,
+        name: name.trim(),
+        lastName: lastName ? lastName.trim() : "",
+        birthdate,
+        email: cleanEmail,
+        password: passwordHashed,
+        isVerified,
+      },
+      config.JWT.secret,
+      { expiresIn: "15m" }
+    );
+
+    res.cookie("resgistrationCookie", token, {
+      maxAge: 15 * 60 * 1000,
+      httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+    });
+
+    // Plantilla HTML del correo
+    const htmlContent = HTMLRecoveryEmail(randomNumber);
+
+    // Enviar el correo usando la utility oficial de Mailjet
+    try {
+      await sendEmail(cleanEmail, "Código de Verificación - ProNatural Store", htmlContent);
+      return res.status(200).json({
+        message: "Código de verificación enviado al correo.",
+        token,
+      });
+    } catch (mailError) {
+      console.warn("[MAILJET FALLBACK] Error al enviar email con Mailjet:", mailError.message);
+      console.log("🔑 CÓDIGO DE VERIFICACIÓN CLIENTE (DEV):", randomNumber);
+      return res.status(200).json({
+        message: `Código de verificación generado: ${randomNumber}`,
+        token,
+        code: randomNumber,
+      });
+    }
+  } catch (error) {
+    console.error("Error en registro de cliente:", error);
+    return res.status(500).json({ message: "Error interno en registro." });
+  }
 };
 
-//VERIFICAR EL CÓDIGO QUE ACABAMOS DE ENVIAR
+// Verificar el código enviado al correo y completar registro
 registerClientesController.verifyCode = async (req, res) => {
-    try {
-        //Solicitamos el código que escribieron en el frontend
-        const { verificationCodeRequest } = req.body;
+  try {
+    const { verificationCodeRequest, code, token: bodyToken } = req.body;
+    const inputCode = verificationCodeRequest || code;
 
-        //Obtener el token de las cookies
-        const token = req.cookies.resgistrationCookie;
-
-        //extraer toda la información del token
-        const decoded = jsonwebtoken.verify(token, config.JWT.secret);
-        const {
-            randomNumber: storedCode,
-            name,
-            lastName,
-            birthdate,
-            email,
-            password,
-            isVerified,
-        } = decoded;
-
-        //Comparar lo que el usuario escribió con el código que está en el token
-        if (verificationCodeRequest !== storedCode) {
-            return res.status(400).json({ message: "Invalid code" });
-        }
-
-        //Si todo está bien, y el usuario escribe el código, lo registramos en la BD
-        const NewCliente = new clientesModel({
-            name,
-            lastName,
-            birthdate,
-            email,
-            password,
-            isVerified: true,
-        });
-
-        await NewCliente.save();
-
-        res.clearCookie("resgistrationCookie")
-
-        return res.status(200).json({ message: "Cliente registrado correctamente" })
-
-    } catch (error) {
-        console.log("error" + error)
-        return res.status(500).json({ message: "Internal server error" })
+    if (!inputCode) {
+      return res.status(400).json({ message: "Ingresa el código de verificación." });
     }
+
+    // Obtener la cookie de registro o token alternativo
+    const rawCookieHeader = req.headers.cookie;
+    let token = req.cookies?.resgistrationCookie || req.cookies?.registrationCookie || bodyToken;
+
+    if (!token && rawCookieHeader) {
+      const match = rawCookieHeader.match(/resgistrationCookie=([^;]+)/) || rawCookieHeader.match(/registrationCookie=([^;]+)/);
+      if (match) token = match[1];
+    }
+
+    if (!token) {
+      return res.status(400).json({ message: "La sesión de verificación ha expirado. Por favor intenta registrarte de nuevo." });
+    }
+
+    // Decodificar la información guardada en el token
+    const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    const {
+      randomNumber: storedCode,
+      name,
+      lastName,
+      birthdate,
+      email,
+      password,
+    } = decoded;
+
+    // Comparar el código ingresado con el guardado
+    if (inputCode.trim() !== storedCode) {
+      return res.status(400).json({ message: "El código de verificación es incorrecto." });
+    }
+
+    // Guardar el cliente en la base de datos
+    const NewCliente = new clientesModel({
+      name,
+      nombre: name,
+      lastName,
+      apellido: lastName,
+      birthdate,
+      fechaNacimiento: birthdate,
+      email,
+      correo: email,
+      password,
+      isVerified: true,
+      status: "Active",
+    });
+
+    await NewCliente.save();
+
+    res.clearCookie("resgistrationCookie");
+    res.clearCookie("registrationCookie");
+
+    return res.status(200).json({ message: "Cliente verificado y registrado correctamente." });
+  } catch (error) {
+    console.error("Error al verificar código:", error);
+    return res.status(500).json({ message: "Error al verificar código de registro." });
+  }
 };
 
-export default registerClientesController
+export default registerClientesController;

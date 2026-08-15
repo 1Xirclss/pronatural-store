@@ -1,135 +1,223 @@
 import salesModel from "../models/Ventas.js";
 import productsModel from "../models/Productos.js";
-import nodemailer from "nodemailer";
 import { config } from "../../config.js";
+import { sendEmail } from "../utils/sendMailMailjet.js";
 
-// Array de funciones del controlador
+// Objeto agrupador del controlador de ventas
 const controladoresVentas = {};
 
-// SELECT - Obtener todas las ventas con populate
+// Obtener el historial completo de ventas realizadas
 controladoresVentas.getSales = async (req, res) => {
   try {
     const sales = await salesModel
       .find()
-      .populate("customerId", "name lastName email")
+      .populate("customerId", "name lastName email phone")
       .populate("employeeId", "name lastName")
-      .populate("products.productId", "nombreProducto precio");
+      .populate("products.productId", "nombreProducto precio sku idCategoria imagenProducto")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json(sales);
   } catch (error) {
-    console.log("Error al obtener ventas: " + error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    console.error("Error al obtener ventas:", error);
+    return res.status(500).json({ message: "Error al consultar ventas." });
   }
 };
 
-// SELECT por ID
+// Obtener un resumen de las métricas principales de ventas
+controladoresVentas.getSalesSummary = async (req, res) => {
+  try {
+    // Filtrar ventas excluyendo las que fueron canceladas
+    const sales = await salesModel.find({ status: { $ne: 'cancelled' } });
+
+    // Contar el total de ventas válidas
+    const totalSalesCount = sales.length;
+
+    // Sumar el total de ingresos generados
+    const totalRevenue = sales.reduce((acc, s) => acc + (s.total || 0), 0);
+
+    // Calcular el valor promedio por pedido
+    const averageOrderValue = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
+
+    // Retornar el resumen de métricas
+    return res.status(200).json({
+      totalSalesCount,
+      totalRevenue,
+      averageOrderValue
+    });
+  } catch (error) {
+    console.error("Error al obtener resumen de ventas:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+// Obtener ventas dentro de un rango específico de fechas
+controladoresVentas.getSalesByDateRange = async (req, res) => {
+  try {
+    // Tomar fecha inicial y final del cuerpo del request
+    const { startDate, endDate } = req.body;
+    const query = {};
+
+    // Si se especificaron fechas, construir la condición de filtro en la consulta
+    if (startDate || endDate) {
+      query.createdAt = {};
+
+      // Si hay fecha de inicio, agregar límite inferior
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+
+      // Si hay fecha de fin, agregar límite superior
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    // Buscar las ventas que coincidan con el rango de fechas
+    const sales = await salesModel
+      .find(query)
+      .populate("customerId", "name lastName email")
+      .populate("employeeId", "name lastName")
+      .populate("products.productId", "nombreProducto precio")
+      .sort({ createdAt: -1 });
+
+    // Responder con la lista filtrada
+    return res.status(200).json(sales);
+  } catch (error) {
+    console.error("Error al obtener ventas por fechas:", error);
+    return res.status(500).json({ message: "Error al filtrar ventas por fecha." });
+  }
+};
+
+// Obtener los detalles de una venta en específico por su ID
 controladoresVentas.getSaleById = async (req, res) => {
   try {
+    // Obtener id de la venta desde la URL
+    const { id } = req.params;
+
+    // Buscar la venta en MongoDB con sus referencias pobladas
     const sale = await salesModel
-      .findById(req.params.id)
+      .findById(id)
       .populate("customerId", "name lastName email")
       .populate("employeeId", "name lastName")
       .populate("products.productId", "nombreProducto precio descripcion");
 
+    // Si la venta no existe en la base de datos
     if (!sale) {
-      return res.status(404).json({ message: "Venta no encontrada" });
+      return res.status(404).json({ message: "Venta no encontrada." });
     }
 
+    // Devolver los detalles de la venta
     return res.status(200).json(sale);
   } catch (error) {
-    console.log("error" + error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error al obtener detalle de venta:", error);
+    return res.status(500).json({ message: "Error interno al consultar la venta." });
   }
 };
 
-// INSERT - Crear nueva venta (admin registra venta manual)
+// Registrar una nueva venta
 controladoresVentas.insertSale = async (req, res) => {
   try {
-    // #1 - Solicitar los datos
+    // Extraer datos del cliente, lista de productos, método de pago, estado y notas
     const { customerId, products, paymentMethod, status, notes } = req.body;
-    
-    // El middleware validateAuthCookie ya inyecta el usuario autenticado en req.user
+
+    // Obtener el ID del empleado desde el objeto del usuario autenticado si existe
     const employeeId = req.user ? req.user.id : null;
 
-    // Validaciones mínimas
-    if (!products || products.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Se requiere al menos un producto" });
+    // Validar que se reciba un arreglo válido de productos y que no esté vacío
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: "La venta debe incluir al menos un producto." });
     }
 
-    // #2 - Calcular totales y verificar stock
     let total = 0;
     const newProducts = [];
 
+    // Iterar cada producto solicitado para validar existencias e inventario
     for (let i = 0; i < products.length; i++) {
-      const productFound = await productsModel.findById(
-        products[i].productId
-      );
+      const item = products[i];
 
+      // Validar que el producto tenga un ID válido
+      if (!item.productId) {
+        return res.status(400).json({ message: `Producto inválido en la posición ${i + 1}.` });
+      }
+
+      // Convertir la cantidad a número
+      const quantity = Number(item.quantity);
+
+      // Comprobar que sea un número entero positivo mayor a cero
+      if (isNaN(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+        return res.status(400).json({ 
+          message: "La cantidad solicitada debe ser un número entero mayor a cero (0)." 
+        });
+      }
+
+      // Buscar el producto en la base de datos para obtener su precio real
+      const productFound = await productsModel.findById(item.productId);
+
+      // Si el producto no se encuentra en el catálogo
       if (!productFound) {
         return res.status(404).json({
-          message: `Producto ${products[i].productId} no encontrado`,
+          message: "Producto no encontrado en el catálogo.",
         });
       }
 
-      // Verificar stock disponible
-      if (productFound.stock < products[i].quantity) {
+      // Validar que el stock disponible sea suficiente para cubrir la cantidad pedida
+      if (productFound.stock < quantity) {
         return res.status(400).json({
-          message: `Insufficient stock for product: ${productFound.nombreProducto}. Available: ${productFound.stock}`,
+          message: `Stock insuficiente para ${productFound.nombreProducto}. Disponibles: ${productFound.stock}, solicitados: ${quantity}.`,
         });
       }
 
-      // Precio al momento de la venta
-      const unitPrice = productFound.precio || 0;
-      const subtotal = unitPrice * products[i].quantity;
+      // Calcular el precio unitario y subtotal en el servidor
+      const unitPrice = typeof productFound.precio === 'number' ? productFound.precio : 0;
+      const subtotal = unitPrice * quantity;
       total += subtotal;
 
+      // Agregar al arreglo de productos procesados de la venta
       newProducts.push({
-        productId: products[i].productId,
-        quantity: products[i].quantity,
+        productId: item.productId,
+        quantity,
         unitPrice,
         subtotal,
       });
+    }
 
-      // #3 - Descontar stock del producto SOLO si no es venta de WhatsApp pendiente
+    // Descontar la cantidad vendida del inventario de productos
+    for (let i = 0; i < newProducts.length; i++) {
+      const item = newProducts[i];
+
+      // Solo descontar si el estado de la venta no es de WhatsApp pendiente
       if (status !== 'Pendiente WhatsApp') {
         const updatedProduct = await productsModel.findByIdAndUpdate(
-          products[i].productId,
-          { $inc: { stock: -products[i].quantity } },
-          { new: true }
+          item.productId,
+          { $inc: { stock: -item.quantity } },
+          { returnDocument: 'after' }
         );
 
+        // Si el stock baja de 15 unidades, enviar una alerta por correo
         if (updatedProduct && updatedProduct.stock <= 15) {
           try {
             const transporter = nodemailer.createTransport({
-              host: config.SMTP_HOST || "smtp.gmail.com",
-              port: config.SMTP_PORT || 465,
-              secure: true,
+              service: "gmail",
               auth: {
-                user: config.SMTP_USER || "pronatural.store.sv@gmail.com",
-                pass: config.SMTP_PASSWORD || "zndq kvqj rblb ahcw",
+                user: config.email.user_email,
+                pass: config.email.user_password,
               },
             });
+
             await transporter.sendMail({
-              from: '"Sistema ProNatural" <pronatural.store.sv@gmail.com>',
-              to: config.SMTP_USER || "pronatural.store.sv@gmail.com",
+              from: `"ProNatural Store" <${config.email.user_email}>`,
+              to: config.email.user_email,
               subject: `⚠️ Alerta de Bajo Stock: ${updatedProduct.nombreProducto}`,
               html: `
                 <h2>Alerta de Inventario</h2>
-                <p>El producto <strong>${updatedProduct.nombreProducto}</strong> ha alcanzado niveles críticos de inventario.</p>
-                <p><strong>Stock actual:</strong> <span style="color:red; font-size:18px; font-weight:bold">${updatedProduct.stock}</span> unidades.</p>
-                <p>Por favor, reabastece este producto lo antes posible.</p>
+                <p>El producto <strong>${updatedProduct.nombreProducto}</strong> ha alcanzado un nivel bajo de stock.</p>
+                <p><strong>Stock disponible:</strong> <span style="color:red; font-size:18px; font-weight:bold">${updatedProduct.stock}</span> unidades.</p>
               `,
             });
           } catch (emailError) {
-            console.error("Error enviando alerta de stock:", emailError);
+            console.error("Error al enviar alerta por email:", emailError);
           }
         }
       }
     }
 
-    // #4 - Llenar instancia del modelo
+    // Crear el objeto del modelo de venta
     const newSale = new salesModel({
       customerId: customerId || null,
       employeeId,
@@ -137,266 +225,180 @@ controladoresVentas.insertSale = async (req, res) => {
       total,
       paymentMethod: paymentMethod || "cash",
       status: status || "completed",
-      notes,
+      notes: notes || "",
     });
 
-    // #5 - Guardar en la base de datos
+    // Guardar la venta en la base de datos
     const savedSale = await newSale.save();
     
+    // Consultar el registro con sus relaciones de productos y clientes totalmente pobladas
     const populatedSale = await salesModel.findById(savedSale._id)
       .populate("customerId", "name lastName email")
       .populate("employeeId", "name lastName")
       .populate("products.productId", "nombreProducto precio");
 
+    // Responder con código de éxito 201
     return res.status(201).json(populatedSale);
   } catch (error) {
-    console.log("Error al crear venta: " + error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    console.error("Error al registrar la venta:", error);
+    return res.status(500).json({ message: "Error interno al procesar la venta." });
   }
 };
 
-// UPDATE - Actualizar estado de una venta (ej: cancelar)
+// Actualizar el estado de una venta existente
 controladoresVentas.updateSaleStatus = async (req, res) => {
   try {
+    // Tomar ID del parámetro y nuevo estado del cuerpo
+    const { id } = req.params;
     const { status, notes } = req.body;
 
-    const sale = await salesModel.findById(req.params.id);
+    // Buscar la venta a modificar
+    const sale = await salesModel.findById(id);
 
+    // Si la venta no existe
     if (!sale) {
-      return res.status(404).json({ message: "Sale not found" });
+      return res.status(404).json({ message: "Venta no encontrada." });
     }
 
-    // Si se cancela, devolver el stock (solo si no estaba pendiente)
-    if (status === "cancelled" && sale.status !== "cancelled" && sale.status !== "Pendiente WhatsApp") {
-      for (const item of sale.products) {
-        await productsModel.findByIdAndUpdate(
-          item.productId,
-          { $inc: { stock: item.quantity } },
-          { new: true }
-        );
-      }
-    }
+    // Normalizar comprobaciones de estado
+    const isTargetCancelled = status === "Cancelado" || status === "cancelled";
+    const isOriginalCancelled = sale.status === "Cancelado" || sale.status === "cancelled";
 
-    // Si se confirma una venta de WhatsApp, descontar el stock
-    if (status === "Completado" && sale.status === "Pendiente WhatsApp") {
+    // Si la venta se cancela, devolver las unidades al stock de inventario si no estaban ya canceladas ni eran Pendiente WhatsApp (que no habían descontado stock)
+    if (isTargetCancelled && !isOriginalCancelled && sale.status !== "Pendiente WhatsApp" && sale.status !== "Pendiente") {
       for (const item of sale.products) {
-        const updatedProduct = await productsModel.findByIdAndUpdate(
-          item.productId,
-          { $inc: { stock: -item.quantity } },
-          { new: true }
-        );
-
-        if (updatedProduct && updatedProduct.stock <= 15) {
-          try {
-            const transporter = nodemailer.createTransport({
-              host: config.SMTP_HOST || "smtp.gmail.com",
-              port: config.SMTP_PORT || 465,
-              secure: true,
-              auth: {
-                user: config.SMTP_USER || "pronatural.store.sv@gmail.com",
-                pass: config.SMTP_PASSWORD || "zndq kvqj rblb ahcw",
-              },
-            });
-            await transporter.sendMail({
-              from: '"Sistema ProNatural" <pronatural.store.sv@gmail.com>',
-              to: config.SMTP_USER || "pronatural.store.sv@gmail.com",
-              subject: `⚠️ Alerta de Bajo Stock: ${updatedProduct.nombreProducto}`,
-              html: `
-                <h2>Alerta de Inventario</h2>
-                <p>El producto <strong>${updatedProduct.nombreProducto}</strong> ha alcanzado niveles críticos de inventario.</p>
-                <p><strong>Stock actual:</strong> <span style="color:red; font-size:18px; font-weight:bold">${updatedProduct.stock}</span> unidades.</p>
-                <p>Por favor, reabastece este producto lo antes posible.</p>
-              `,
-            });
-          } catch (emailError) {
-            console.error("Error enviando alerta de stock:", emailError);
-          }
+        if (item.productId) {
+          await productsModel.findByIdAndUpdate(
+            item.productId,
+            { $inc: { stock: item.quantity } },
+            { returnDocument: 'after' }
+          );
         }
       }
     }
 
-    const updated = await salesModel.findByIdAndUpdate(
-      req.params.id,
-      { status, notes },
-      { new: true }
-    );
+    // Si se completa/entrega una venta previa de WhatsApp o Pendiente, descontar el stock
+    const isTargetCompleted = status === "Completado" || status === "Entregado";
+    const isOriginalPending = sale.status === "Pendiente WhatsApp" || sale.status === "Pendiente";
 
-    return res
-      .status(200)
-      .json({ message: "Estado de venta actualizado", sale: updated });
-  } catch (error) {
-    console.log("error" + error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// DELETE - Eliminar una venta
-controladoresVentas.deleteSale = async (req, res) => {
-  try {
-    const sale = await salesModel.findByIdAndDelete(req.params.id);
-    if (!sale) {
-      return res.status(404).json({ message: "Venta no encontrada" });
+    if (isTargetCompleted && isOriginalPending) {
+      for (const item of sale.products) {
+        if (item.productId) {
+          await productsModel.findByIdAndUpdate(
+            item.productId,
+            { $inc: { stock: -item.quantity } },
+            { returnDocument: 'after' }
+          );
+        }
+      }
     }
-    return res.status(200).json({ message: "Venta eliminada exitosamente" });
+
+    // Actualizar campos de estado y notas si se proporcionan
+    if (status) sale.status = status;
+    if (notes !== undefined) sale.notes = notes;
+
+    // Guardar los cambios de la venta
+    await sale.save();
+
+    // Responder con éxito
+    return res.status(200).json({ message: "Estado de la venta actualizado.", sale });
   } catch (error) {
-    console.log("error" + error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error al actualizar estado de venta:", error);
+    return res.status(500).json({ message: "Error al actualizar la venta." });
   }
 };
 
-// SELECT - Ventas por rango de fechas
-controladoresVentas.getSalesByDateRange = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.body;
-
-    const sales = await salesModel
-      .find({
-        createdAt: {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        },
-      })
-      .populate("customerId", "name lastName email")
-      .populate("employeeId", "name lastName")
-      .populate("products.productId", "nombreProducto precio");
-
-    return res.status(200).json(sales);
-  } catch (error) {
-    console.log("Error al obtener ventas por rango: " + error);
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-};
-
-// SELECT - Total de ventas (reporte rápido)
-controladoresVentas.getSalesSummary = async (req, res) => {
-  try {
-    const totalSales = await salesModel.countDocuments({
-      status: "completed",
-    });
-
-    const totalRevenue = await salesModel.aggregate([
-      { $match: { status: "completed" } },
-      { $group: { _id: null, total: { $sum: "$total" } } },
-    ]);
-
-    return res.status(200).json({
-      totalSales,
-      totalRevenue: totalRevenue[0]?.total || 0,
-    });
-  } catch (error) {
-    console.log("Error al obtener resumen de ventas: " + error);
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-};
-// POST - Enviar Factura Digital al Correo
+// Enviar un recibo/factura digital en formato HTML por correo al cliente
 controladoresVentas.sendInvoiceEmail = async (req, res) => {
   try {
-    //#1- Solicito el ID de la venta
+    // Obtener ID de la venta y el correo de destino
     const { id } = req.params;
+    const { recipientEmail } = req.body;
 
-    //#2- Busco la venta y el cliente en la base de datos
+    // Buscar la venta en la base de datos
     const sale = await salesModel
       .findById(id)
       .populate("customerId", "name lastName email")
       .populate("products.productId", "nombreProducto precio");
 
+    // Si la venta no existe
     if (!sale) {
-      return res.status(404).json({ message: "Venta no encontrada" });
+      return res.status(404).json({ message: "Venta no encontrada." });
     }
 
-    //#3- Verifico que haya un cliente con correo asociado
-    if (!sale.customerId || !sale.customerId.email) {
-      return res.status(400).json({ message: "El cliente no tiene un correo registrado." });
+    // Determinar la dirección de correo de destino
+    const targetEmail = recipientEmail || sale.customerId?.email;
+
+    // Validar que se cuente con un correo
+    if (!targetEmail) {
+      return res.status(400).json({ message: "Se requiere un correo de destino para la factura." });
     }
 
-    //#4- Construyo la plantilla HTML para el correo
-    const emailTo = sale.customerId.email;
-    const clientName = `${sale.customerId.name} ${sale.customerId.lastName}`;
-    
-    let productsHtml = "";
-    sale.products.forEach(p => {
-      const pName = p.productId ? p.productId.nombreProducto : "Producto desconocido";
-      const pPrice = p.unitPrice.toFixed(2);
-      const subtotal = p.subtotal.toFixed(2);
-      productsHtml += `
-        <tr>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #fff;">${pName}</td>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; color: #fff;">${p.quantity}</td>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right; color: #fff;">$${pPrice}</td>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right; color: #4ade80;">$${subtotal}</td>
-        </tr>
-      `;
-    });
+    // Construir tabla HTML con el desglose de productos
+    const itemsHtml = sale.products ? sale.products.map(p => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #1f2937;">${p.productId?.nombreProducto || p.productId?.name || 'Producto'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #1f2937; text-align: center;">${p.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #1f2937; text-align: right;">$${p.unitPrice?.toFixed(2) || '0.00'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #1f2937; text-align: right;">$${p.subtotal?.toFixed(2) || '0.00'}</td>
+      </tr>
+    `).join('') : '';
 
-    const htmlTemplate = `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0d1114; border: 1px solid #1b4332; border-radius: 12px; overflow: hidden; color: #e2e8f0;">
-        <div style="background-color: #1b4332; padding: 30px 20px; text-align: center;">
-          <h1 style="color: #4ade80; margin: 0; font-size: 28px; letter-spacing: 2px; font-weight: bold;">PRONATURAL</h1>
-          <p style="color: #a7f3d0; margin: 5px 0 0 0; font-size: 14px;">Pasión por lo natural</p>
-        </div>
-        
-        <div style="padding: 30px 20px;">
-          <h2 style="color: #fff; margin-top: 0; font-size: 20px;">Factura de Compra</h2>
-          <p style="color: #94a3b8; font-size: 14px;">Hola <strong style="color: #fff;">${clientName}</strong>, gracias por tu compra en ProNatural.</p>
-          
-          <div style="background-color: #161b1e; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin: 25px 0;">
-            <p style="margin: 0 0 5px 0; font-size: 13px; color: #94a3b8;"><strong>Recibo N°:</strong> ${sale._id}</p>
-            <p style="margin: 0 0 5px 0; font-size: 13px; color: #94a3b8;"><strong>Fecha:</strong> ${new Date(sale.createdAt).toLocaleDateString()}</p>
-            <p style="margin: 0; font-size: 13px; color: #94a3b8;"><strong>Método de pago:</strong> ${sale.paymentMethod}</p>
-          </div>
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+    // Enviar el correo electrónico mediante la utility de Mailjet
+    try {
+      await sendEmail(
+        targetEmail,
+        `🧾 Recibo de Compra #${sale._id.toString().substring(0, 6).toUpperCase()} - ProNatural`,
+        `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #1b4332; border-radius: 8px; background-color: #0a0d0f; color: #ffffff;">
+          <h2 style="color: #30b466; margin-top: 0;">ProNatural Store</h2>
+          <p>Adjuntamos el desglose de tu compra:</p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
             <thead>
-              <tr>
-                <th style="padding: 10px; border-bottom: 2px solid rgba(255,255,255,0.1); text-align: left; color: #94a3b8; font-size: 12px; text-transform: uppercase;">Producto</th>
-                <th style="padding: 10px; border-bottom: 2px solid rgba(255,255,255,0.1); text-align: center; color: #94a3b8; font-size: 12px; text-transform: uppercase;">Cant.</th>
-                <th style="padding: 10px; border-bottom: 2px solid rgba(255,255,255,0.1); text-align: right; color: #94a3b8; font-size: 12px; text-transform: uppercase;">Precio</th>
-                <th style="padding: 10px; border-bottom: 2px solid rgba(255,255,255,0.1); text-align: right; color: #94a3b8; font-size: 12px; text-transform: uppercase;">Total</th>
+              <tr style="background-color: #0a2016; color: white;">
+                <th style="padding: 8px; text-align: left;">Producto</th>
+                <th style="padding: 8px; text-align: center;">Cant.</th>
+                <th style="padding: 8px; text-align: right;">P. Unit</th>
+                <th style="padding: 8px; text-align: right;">Subtotal</th>
               </tr>
             </thead>
-            <tbody>
-              ${productsHtml}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" style="padding: 15px 10px 5px 10px; text-align: right; color: #94a3b8; font-size: 14px; font-weight: bold;">TOTAL:</td>
-                <td style="padding: 15px 10px 5px 10px; text-align: right; color: #4ade80; font-size: 18px; font-weight: bold;">$${sale.total.toFixed(2)}</td>
-              </tr>
-            </tfoot>
+            <tbody>${itemsHtml}</tbody>
           </table>
-
-          <p style="text-align: center; color: #94a3b8; font-size: 13px; margin-top: 30px;">Si tienes alguna duda con tu pedido, no dudes en contactarnos.</p>
+          <h3 style="text-align: right; color: #4ade80; margin-top: 15px;">Total: $${sale.total?.toFixed(2) || '0.00'}</h3>
         </div>
-        
-        <div style="background-color: #0b0e11; padding: 15px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);">
-          <p style="color: #64748b; font-size: 11px; margin: 0;">© ${new Date().getFullYear()} ProNatural. Todos los derechos reservados.</p>
-        </div>
-      </div>
-    `;
+        `
+      );
+    } catch (mailErr) {
+      console.warn("[MAILJET FALLBACK] Error al enviar recibo de compra con Mailjet:", mailErr.message);
+    }
 
-    //#5- Configuro Nodemailer y envío el correo
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: config.email.user_email,
-        pass: config.email.user_password,
-      },
-    });
-
-    const mailOptions = {
-      from: config.email.user_email,
-      to: emailTo,
-      subject: `ProNatural - Factura de Compra #${sale._id.toString().substring(0, 8)}`,
-      html: htmlTemplate,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    //#6- Respondo éxito
-    return res.status(200).json({ message: "Factura enviada exitosamente" });
+    // Retornar mensaje de confirmación
+    return res.status(200).json({ message: "Factura enviada por correo." });
   } catch (error) {
-    console.log("Error al enviar factura: " + error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    console.error("Error al enviar factura:", error);
+    return res.status(500).json({ message: "Error al enviar la factura por correo." });
+  }
+};
+
+// Eliminar un registro de venta por su ID
+controladoresVentas.deleteSale = async (req, res) => {
+  try {
+    // Tomar ID del parámetro
+    const { id } = req.params;
+
+    // Eliminar la venta de la base de datos
+    const eliminada = await salesModel.findByIdAndDelete(id);
+
+    // Si la venta no fue encontrada
+    if (!eliminada) {
+      return res.status(404).json({ message: "Venta no encontrada." });
+    }
+
+    // Responder que la venta fue eliminada correctamente
+    return res.status(200).json({ message: "Venta eliminada exitosamente." });
+  } catch (error) {
+    console.error("Error al eliminar venta:", error);
+    return res.status(500).json({ message: "Error al eliminar la venta." });
   }
 };
 

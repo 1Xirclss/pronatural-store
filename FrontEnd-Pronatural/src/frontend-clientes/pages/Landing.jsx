@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
-import { useGlobalData } from '../../context/GlobalDataContext';
 import { getCloudinaryUrl } from '../../utils/cloudinary';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
 
 const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1611162458324-aae1eb4129a4?q=80&w=2000&auto=format&fit=crop",
@@ -13,8 +14,24 @@ const HERO_IMAGES = [
 export default function Landing() {
   const navigate = useNavigate();
   const { addItem } = useCart();
-  const { products: adminProducts } = useGlobalData();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [mostSoldProduct, setMostSoldProduct] = useState(null);
+
+  // Cargar el producto más vendido desde el backend en tiempo real
+  useEffect(() => {
+    const fetchMostSold = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/products/most-sold`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setMostSoldProduct(data);
+        }
+      } catch (e) {
+        console.error('Error al cargar producto más vendido:', e);
+      }
+    };
+    fetchMostSold();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -23,23 +40,8 @@ export default function Landing() {
     return () => clearInterval(timer);
   }, []);
 
-  const validProducts = adminProducts.filter(p => {
-    const name = (p.nombreProducto || p.name || "");
-    return name.trim().length > 0;
-  });
-  
-  const dbMostSold = validProducts.length > 0 ? validProducts[0] : null;
-
-  const mostSoldProduct = dbMostSold ? {
-    id: dbMostSold._id || dbMostSold.id,
-    name: dbMostSold.nombreProducto || dbMostSold.name,
-    price: dbMostSold.precio || dbMostSold.price || 0,
-    img: dbMostSold.imagen || dbMostSold.img || 'https://images.unsplash.com/photo-1559525839-b184a4d698c7?q=80&w=1200&auto=format&fit=crop',
-    sku: dbMostSold.sku || 'N/A',
-    desc: dbMostSold.descripcion || dbMostSold.desc || 'Nuestro producto más popular, seleccionado cuidadosamente por nuestros expertos para ofrecerte la mejor calidad.'
-  } : null;
-
   const handleAddToCart = () => {
+    if (!mostSoldProduct) return;
     addItem({
       id: mostSoldProduct.id,
       name: mostSoldProduct.name,
