@@ -31,7 +31,7 @@ export default function ProtectedRoute({ children, allowedRoles, authFallback = 
     }
     // Redirigir al empleado a su panel de vendedor
     if (user?.role === 'Employee') {
-      return <Navigate to="/vendedor" replace />;
+      return <Navigate to={`${ADMIN_PREFIX}/vendedor`} replace />;
     }
     // Redirigir al cliente al catálogo
     return <Navigate to="/catalogo" replace />;

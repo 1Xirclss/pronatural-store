@@ -33,10 +33,32 @@ export default function ProductDetail() {
     : getCloudinaryUrl(product.img || product.imagen);
 
   // 2. Extracción dinámica de especificaciones existentes
-  const specs = product.specs || {};
-  const validSpecs = Object.entries(specs).filter(([_, val]) => Boolean(val && String(val).trim()));
+  let specs = {};
+  if (product.specs) {
+    if (typeof product.specs === 'object' && product.specs !== null && !Array.isArray(product.specs)) {
+      specs = product.specs;
+    } else if (typeof product.specs === 'string') {
+      try {
+        const parsed = JSON.parse(product.specs);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          specs = parsed;
+        }
+      } catch (e) {
+        specs = {};
+      }
+    }
+  }
 
-  const origen = specs.ORIGEN || specs['ORIGEN TÉCNICO'] || specs.origen || null;
+  if (!specs.ORIGEN && product.origin) {
+    specs.ORIGEN = product.origin;
+  }
+
+  // Filtrar solo especificaciones válidas con llaves alfanuméricas legibles (evitar índices numéricos)
+  const validSpecs = Object.entries(specs).filter(([key, val]) => 
+    isNaN(Number(key)) && Boolean(val && typeof val !== 'object' && String(val).trim())
+  );
+
+  const origen = specs.ORIGEN || specs['ORIGEN TÉCNICO'] || specs.origen || product.origin || null;
   const sabores = specs.SABOR ? String(specs.SABOR).split(',').map(s => s.trim()).filter(Boolean) : [];
   const intensidad = specs.INTENSIDAD || specs.intensidad || null;
 

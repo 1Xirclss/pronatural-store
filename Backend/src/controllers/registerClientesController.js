@@ -65,7 +65,8 @@ registerClientesController.register = async (req, res) => {
     res.cookie("resgistrationCookie", token, {
       maxAge: 15 * 60 * 1000,
       httpOnly: false,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
     });
 

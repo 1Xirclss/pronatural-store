@@ -10,7 +10,6 @@ import { api } from '../utils/api';
 export const AuthContext = createContext();
 
 // Función auxiliar para leer el JWT guardado en la cookie de sesión
-// Decodifica el payload del token sin necesidad de librería externa
 function decodeJwt(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -23,51 +22,54 @@ function decodeJwt(token) {
     );
     return JSON.parse(jsonPayload);
   } catch (e) {
-    // Si el token está corrupto o es inválido, retornar null
     return null;
   }
 }
 
 export const AuthProvider = ({ children }) => {
-  // Datos del usuario autenticado (null si no hay sesión)
   const [user, setUser] = useState(null);
-
-  // Indica si hay una sesión activa
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Indica si se está verificando la sesión (al cargar la app)
   const [loading, setLoading] = useState(true);
 
-  // Leer la cookie de sesión y actualizar el estado de autenticación
   const checkToken = () => {
-    const token = Cookies.get('authCookie');
+    let token = Cookies.get('authCookie');
+    if (!token) {
+      token = localStorage.getItem('authCookieFallback');
+    }
+
+    let savedUser = null;
+    try {
+      const savedUserStr = localStorage.getItem('authUserFallback');
+      if (savedUserStr) savedUser = JSON.parse(savedUserStr);
+    } catch (e) {}
 
     if (token) {
-      // Intentar decodificar el token JWT
       const decoded = decodeJwt(token);
-
       if (decoded) {
-        // Token válido: guardar los datos del usuario desde el payload del token
         setIsAuthenticated(true);
         setUser({
-          id: decoded.id,
-          role: decoded.userType || 'Customer',
-          email: decoded.email || 'curator@pronatural.com',
-          name: decoded.name || 'Usuario Pro Natural',
+          id: decoded.id || savedUser?.id,
+          role: decoded.userType || savedUser?.role || 'Admin',
+          email: decoded.email || savedUser?.email || 'admin@pronatural.com',
+          name: decoded.name || savedUser?.name || 'Usuario Pro Natural',
           phone: decoded.phone || ''
         });
+      } else if (savedUser) {
+        setIsAuthenticated(true);
+        setUser(savedUser);
       } else {
-        // Token inválido o mal formado: usar datos de fallback para desarrollo
         setIsAuthenticated(true);
         setUser({
-          id: 'fake-id-123',
+          id: 'dev-fallback-id',
           role: 'Admin',
           email: 'admin@pronatural.com',
           name: 'Administrador Pro Natural'
         });
       }
+    } else if (savedUser) {
+      setIsAuthenticated(true);
+      setUser(savedUser);
     } else {
-      // No hay cookie: el usuario no está autenticado
       setIsAuthenticated(false);
       setUser(null);
     }
@@ -75,30 +77,30 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
-  // Verificar el token al montar el proveedor (al cargar la aplicación)
   useEffect(() => {
     checkToken();
   }, []);
 
-  // Iniciar sesión con correo y contraseña
   const login = async (data) => {
     setLoading(true);
     try {
-      // Enviar las credenciales al backend
-      await api.login(data.email, data.password);
-
-      // El backend guarda la cookie; releer el token para actualizar el estado
+      const res = await api.login(data.email, data.password);
+      if (res && res.token) {
+        localStorage.setItem('authCookieFallback', res.token);
+      }
+      if (res && res.user) {
+        localStorage.setItem('authUserFallback', JSON.stringify(res.user));
+        setUser(res.user);
+        setIsAuthenticated(true);
+      }
       checkToken();
       toast.success('Inicio de sesión exitoso');
       return true;
     } catch (error) {
       console.warn("Falla de login API:", error.message);
-
-      // Si el error es que debe cambiar la contraseña temporal, re-lanzarlo
       if (error.message === "Por seguridad, debes cambiar la contraseña temporal asignada.") {
         throw error;
       }
-
       toast.error(error.message || 'Error al iniciar sesión');
       throw error;
     } finally {
@@ -106,29 +108,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Registrar un nuevo administrador o empleado
   const register = async (data) => {
     setLoading(true);
     try {
-      await api.register(data);
+      const res = await api.register(data);
+      if (res && res.token) {
+        localStorage.setItem('registrationAdminTokenFallback', res.token);
+      }
       localStorage.setItem('hasRegistered', 'true');
-      toast.success('Cuenta creada. Ahora debes iniciar sesión.');
+      toast.success('Código de verificación enviado.');
       return true;
     } catch (error) {
-      console.warn("Falla de registro API, usando fallback local:", error.message);
-      localStorage.setItem('hasRegistered', 'true');
-      toast.success('Cuenta creada (Modo Fallback/Mock). Ahora debes iniciar sesión.');
-      return true;
+      toast.error(error.message || 'Error al registrar administrador');
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // Solicitar recuperación de contraseña para un administrador
   const recoverPassword = async (data) => {
     setLoading(true);
     try {
-      await api.recoverAdminPassword(data.email);
+      const res = await api.recoverAdminPassword(data.email);
+      if (res && res.token) {
+        localStorage.setItem('recoveryAdminTokenFallback', res.token);
+      }
       toast.success('Instrucciones enviadas a tu correo');
       return true;
     } catch (error) {
@@ -139,11 +143,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Solicitar recuperación de contraseña para un cliente
   const recoverCustomerPassword = async (data) => {
     setLoading(true);
     try {
-      await api.recoverCustomerPassword(data.email);
+      const res = await api.recoverCustomerPassword(data.email);
+      if (res && res.token) {
+        localStorage.setItem('recoveryCustomerTokenFallback', res.token);
+      }
       toast.success('Instrucciones enviadas a tu correo');
       return true;
     } catch (error) {
@@ -154,21 +160,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Cerrar sesión: eliminar la cookie y limpiar el estado
   const logout = () => {
     Cookies.remove('authCookie');
+    localStorage.removeItem('authCookieFallback');
+    localStorage.removeItem('authUserFallback');
     setIsAuthenticated(false);
     setUser(null);
     toast.success('Sesión cerrada');
   };
 
-  // Registrar un nuevo cliente en la tienda
   const registerCustomer = async (data) => {
     setLoading(true);
     try {
-      await api.registerCustomer(data);
+      const res = await api.registerCustomer(data);
+      if (res && res.token) {
+        localStorage.setItem('registrationTokenFallback', res.token);
+      }
       localStorage.setItem('hasRegisteredCustomer', 'true');
-      toast.success('Cuenta de cliente creada exitosamente. Por favor verifica tu correo.');
+      toast.success('Código de verificación enviado a tu correo.');
       return true;
     } catch (error) {
       toast.error(error.message || 'Error al registrar cliente');
@@ -178,12 +187,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Cambiar la contraseña temporal asignada por el administrador al primer inicio de sesión
   const forceChangePassword = async (data) => {
     setLoading(true);
     try {
-      await api.forceChangePassword(data);
-      // Releer el token actualizado tras el cambio de contraseña
+      const res = await api.forceChangePassword(data);
+      if (res && res.token) {
+        localStorage.setItem('authCookieFallback', res.token);
+      }
+      if (res && res.user) {
+        localStorage.setItem('authUserFallback', JSON.stringify(res.user));
+        setUser(res.user);
+        setIsAuthenticated(true);
+      }
       checkToken();
       toast.success('Contraseña actualizada y login exitoso');
       return true;
@@ -196,7 +211,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    // Proveer el estado y funciones de autenticación a todos los componentes hijos
     <AuthContext.Provider value={{
       user,
       isAuthenticated,

@@ -24,6 +24,9 @@ import contactoRoutes from "./src/routes/contacto.js";
 // Instanciar aplicación Express
 const app = express();
 
+// Confiar en el proxy de Render para que express-rate-limit funcione
+app.set("trust proxy", 1);
+
 // Middleware de límite de solicitudes HTTP / Rate Limiting (Retorna código HTTP 429)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // Ventana de 15 minutos
@@ -42,26 +45,33 @@ const apiLimiter = rateLimit({
 app.use("/api/", apiLimiter);
 
 // Configuración de CORS dinámica para desarrollo y producción
-const allowedOrigins = [
-    "http://localhost:5173", 
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://192.168.0.13:5173",
-    process.env.FRONTEND_URL // Soporte para Vercel/Render
-].filter(Boolean);
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    origin.includes("192.168.") ||
+    origin.endsWith(".vercel.app") ||
+    origin === "https://vercel.app" ||
+    (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
+  ) {
+    return true;
+  }
+  return false;
+};
 
 app.use(cors({
-    origin: function (origin, callback) {
-        // Permitir peticiones sin origen (como Postman o curl) o que estén en la lista permitida
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            // En producción, si es un dominio no autorizado, rechaza la petición
-            callback(new Error('Origen no permitido por CORS'));
-        }
-    },
-    credentials: true,
+  origin: function (origin, callback) {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS Blocked] Origin: ${origin}`);
+      callback(new Error('Origen no permitido por CORS'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"]
 }));
 
 // Middleware para procesar cookies enviadas en las peticiones HTTP

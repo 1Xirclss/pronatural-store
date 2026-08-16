@@ -1,26 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { ADMIN_PREFIX } from '../../../config';
 
+function getRedirectUrl(role) {
+  return role === 'Employee' ? ADMIN_PREFIX + '/vendedor' : ADMIN_PREFIX;
+}
+
 export default function AdminLogin() {
+  const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors }, watch } = useForm({ mode: 'onTouched' });
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginOldPassword, setLoginOldPassword] = useState('');
-  const { login, forceChangePassword, loading } = useAuth();
-  const navigate = useNavigate();
+  const { login, forceChangePassword, loading, isAuthenticated, user } = useAuth();
+
+  // Si ya tiene sesion activa al cargar la pagina, redirigir segun rol
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate(getRedirectUrl(user.role), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (data) => {
     try {
       data.email = data.email.toLowerCase().trim();
-      const success = await login(data);
-      if (success) {
-        navigate(ADMIN_PREFIX);
-      }
+      await login(data);
+      // Redirigir inmediatamente usando el rol guardado en localStorage por login()
+      const savedUser = JSON.parse(localStorage.getItem('authUserFallback') || '{}');
+      navigate(getRedirectUrl(savedUser.role), { replace: true });
     } catch (error) {
       if (error.message === "Por seguridad, debes cambiar la contraseña temporal asignada.") {
         toast('Debes cambiar tu contraseña para continuar.', { icon: '🔒' });
@@ -28,20 +39,18 @@ export default function AdminLogin() {
         setLoginOldPassword(data.password);
         setStep(2);
       }
-      // Else, AuthContext already handles the toast
     }
   };
 
   const onChangePassword = async (data) => {
     try {
-      const success = await forceChangePassword({
+      await forceChangePassword({
         email: loginEmail,
         oldPassword: loginOldPassword,
         newPassword: data.newPassword
       });
-      if (success) {
-        navigate(ADMIN_PREFIX);
-      }
+      const savedUser = JSON.parse(localStorage.getItem('authUserFallback') || '{}');
+      navigate(getRedirectUrl(savedUser.role), { replace: true });
     } catch (error) {
       // Error handled by AuthContext
     }

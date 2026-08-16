@@ -34,7 +34,8 @@ authController.register = async (req, res) => {
     res.cookie("registrationAdminCookie", token, {
       maxAge: 15 * 60 * 1000,
       httpOnly: false,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
     });
 
@@ -178,7 +179,8 @@ authController.login = async (req, res) => {
     res.cookie("authCookie", token, {
       httpOnly: false,
       path: "/",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
       expires: new Date(Date.now() + 24 * 3600000),
     });
 
@@ -239,7 +241,8 @@ authController.forceChangePassword = async (req, res) => {
     res.cookie("authCookie", token, {
       httpOnly: false,
       path: "/",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
       expires: new Date(Date.now() + 24 * 3600000),
     });
 

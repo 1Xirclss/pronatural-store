@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd FrontEnd-Pronatural && npm install && npm run build",
+  "outputDirectory": "FrontEnd-Pronatural/dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

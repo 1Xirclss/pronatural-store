@@ -3,8 +3,10 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api
 async function apiRequest(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
   const isFormData = options.body instanceof FormData;
-  const defaultHeaders = isFormData ? {} : {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('authCookieFallback') : null;
+  const defaultHeaders = isFormData ? (token ? { Authorization: `Bearer ${token}` } : {}) : {
     'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
   const config = {
     ...options,
@@ -158,42 +160,66 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(customerData)
   }),
-  verifyCodeEmail: (verificationCodeRequest) => apiRequest('/auth/verifyCode', {
-    method: 'POST',
-    body: JSON.stringify({ verificationCodeRequest })
-  }),
-  verifyCustomerCodeEmail: (verificationCodeRequest) => apiRequest('/registerCliente/verifyCodeEmail', {
-    method: 'POST',
-    body: JSON.stringify({ verificationCodeRequest })
-  }),
+  verifyCodeEmail: (verificationCodeRequest, token) => {
+    const fallbackToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('registrationAdminTokenFallback') : null);
+    return apiRequest('/auth/verifyCode', {
+      method: 'POST',
+      body: JSON.stringify({ verificationCodeRequest, token: fallbackToken })
+    });
+  },
+  verifyCustomerCodeEmail: (verificationCodeRequest, token) => {
+    const fallbackToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('registrationTokenFallback') : null);
+    return apiRequest('/registerCliente/verifyCodeEmail', {
+      method: 'POST',
+      body: JSON.stringify({ verificationCodeRequest, token: fallbackToken })
+    });
+  },
 
   // Recuperación de contraseña (Admin)
   recoverAdminPassword: (email) => apiRequest('/auth/recoveryAdmin/requestCode', {
     method: 'POST',
     body: JSON.stringify({ email })
   }),
-  verifyAdminRecoveryCode: (code) => apiRequest('/auth/recoveryAdmin/verifyCode', {
-    method: 'POST',
-    body: JSON.stringify({ code })
-  }),
-  updateAdminPassword: (newPassword, confirmNewPassword) => apiRequest('/auth/recoveryAdmin/newPassword', {
-    method: 'POST',
-    body: JSON.stringify({ newPassword, confirmNewPassword })
-  }),
+  verifyAdminRecoveryCode: (code, token) => {
+    const fallbackToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('recoveryAdminTokenFallback') : null);
+    return apiRequest('/auth/recoveryAdmin/verifyCode', {
+      method: 'POST',
+      body: JSON.stringify({ code, token: fallbackToken })
+    }).then(res => {
+      if (res && res.token) localStorage.setItem('recoveryAdminTokenFallback', res.token);
+      return res;
+    });
+  },
+  updateAdminPassword: (newPassword, confirmNewPassword, token) => {
+    const fallbackToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('recoveryAdminTokenFallback') : null);
+    return apiRequest('/auth/recoveryAdmin/newPassword', {
+      method: 'POST',
+      body: JSON.stringify({ newPassword, confirmNewPassword, token: fallbackToken })
+    });
+  },
 
   // Recuperación de contraseña (Cliente)
   recoverCustomerPassword: (email) => apiRequest('/auth/recoveryCustomer/requestCode', {
     method: 'POST',
     body: JSON.stringify({ email })
   }),
-  verifyCustomerRecoveryCode: (code) => apiRequest('/auth/recoveryCustomer/verifyCode', {
-    method: 'POST',
-    body: JSON.stringify({ code })
-  }),
-  updateCustomerPassword: (newPassword, confirmNewPassword) => apiRequest('/auth/recoveryCustomer/newPassword', {
-    method: 'POST',
-    body: JSON.stringify({ newPassword, confirmNewPassword })
-  }),
+  verifyCustomerRecoveryCode: (code, token) => {
+    const fallbackToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('recoveryCustomerTokenFallback') : null);
+    return apiRequest('/auth/recoveryCustomer/verifyCode', {
+      method: 'POST',
+      body: JSON.stringify({ code, token: fallbackToken })
+    }).then(res => {
+      if (res && res.token) localStorage.setItem('recoveryCustomerTokenFallback', res.token);
+      return res;
+    });
+  },
+  updateCustomerPassword: (newPassword, confirmNewPassword, token) => {
+    const fallbackToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('recoveryCustomerTokenFallback') : null);
+    return apiRequest('/auth/recoveryCustomer/newPassword', {
+      method: 'POST',
+      body: JSON.stringify({ newPassword, confirmNewPassword, token: fallbackToken })
+    });
+  },
 
   // Ajustes del sistema
   getConfig: () => apiRequest('/ajustes'),

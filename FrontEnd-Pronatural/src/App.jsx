@@ -100,34 +100,34 @@ function App() {
                 }
               >
                 <Route path={ADMIN_PREFIX} element={
-                  <ProtectedRoute allowedRoles={['Admin']}><AdminDashboard /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin']} authFallback={`${ADMIN_PREFIX}/login`}><AdminDashboard /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/catalogo`} element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee']}><AdminCatalog /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}><AdminCatalog /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/inventario`} element={
-                  <ProtectedRoute allowedRoles={['Admin']}><InventoryManagement /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin']} authFallback={`${ADMIN_PREFIX}/login`}><InventoryManagement /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/vendedores`} element={
-                  <ProtectedRoute allowedRoles={['Admin']}><AdminSellers /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin']} authFallback={`${ADMIN_PREFIX}/login`}><AdminSellers /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/clientes`} element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee']}><AdminCustomers /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}><AdminCustomers /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/reportes`} element={
-                  <ProtectedRoute allowedRoles={['Admin']}><Reports /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin']} authFallback={`${ADMIN_PREFIX}/login`}><Reports /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/vendedor`} element={
-                  <ProtectedRoute allowedRoles={['Employee']}><VendorDashboard /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Employee']} authFallback={`${ADMIN_PREFIX}/login`}><VendorDashboard /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/ventas/registrar`} element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee']}><SalesEntry /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}><SalesEntry /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/ventas/historial`} element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee']}><SalesHistory /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}><SalesHistory /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/ajustes`} element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee']}><Settings /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}><Settings /></ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/categorias`} element={
                   <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}>
@@ -135,7 +135,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path={`${ADMIN_PREFIX}/resenas`} element={
-                  <ProtectedRoute allowedRoles={['Admin', 'Employee']}><AdminReviews /></ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['Admin', 'Employee']} authFallback={`${ADMIN_PREFIX}/login`}><AdminReviews /></ProtectedRoute>
                 } />
               </Route>
 

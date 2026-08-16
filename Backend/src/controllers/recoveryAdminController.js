@@ -47,7 +47,8 @@ recoveryAdminController.requestCode = async (req, res) => {
     res.cookie("recoveryAdminCookie", token, {
       maxAge: 15 * 60 * 1000,
       httpOnly: false,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
     });
 
@@ -103,7 +104,8 @@ recoveryAdminController.verifyCode = async (req, res) => {
     res.cookie("recoveryAdminCookie", newToken, {
       maxAge: 15 * 60 * 1000,
       httpOnly: false,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
     });
 

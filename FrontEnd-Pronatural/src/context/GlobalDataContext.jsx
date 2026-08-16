@@ -47,7 +47,7 @@ export function GlobalDataProvider({ children }) {
     const fetchAllData = async () => {
       try {
         // Verificar el token del usuario para saber si es admin o empleado
-        const token = Cookies.get('authCookie');
+        const token = Cookies.get('authCookie') || (typeof localStorage !== 'undefined' ? localStorage.getItem('authCookieFallback') : null);
         const decoded = token ? decodeJwt(token) : null;
         const isAdmin = decoded?.userType === 'Admin' || decoded?.userType === 'Employee';
 

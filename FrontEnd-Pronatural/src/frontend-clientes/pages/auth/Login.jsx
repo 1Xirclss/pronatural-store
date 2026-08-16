@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
@@ -7,16 +7,24 @@ import toast from 'react-hot-toast';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 export default function Login() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (user?.role === 'Admin' || user?.role === 'Employee') {
+        navigate('/portal-seguro', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const onSubmit = async (data) => {
     try {
       const success = await login(data);
-      if (success) {
-        toast.success('Bienvenido a Pro Natural');
-        navigate('/');
-      } else {
+      if (!success) {
         toast.error('Credenciales incorrectas');
       }
     } catch (error) {

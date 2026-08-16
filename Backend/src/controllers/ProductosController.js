@@ -2,6 +2,21 @@ import productsModel from "../models/Productos.js";
 import ventasModel from "../models/Ventas.js";
 import { v2 as cloudinary } from "cloudinary";
 
+// Helper para normalizar especificaciones técnicas
+const normalizeSpecs = (specs) => {
+  if (!specs) return {};
+  if (typeof specs === 'object' && !Array.isArray(specs)) return specs;
+  if (typeof specs === 'string') {
+    try {
+      const parsed = JSON.parse(specs);
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+};
+
 // Objeto agrupador del controlador de productos
 const controladoresProductos = {};
 
@@ -88,7 +103,7 @@ controladoresProductos.getProducts = async (req, res) => {
       img: prod.imagenProducto && prod.imagenProducto.length > 0 ? prod.imagenProducto[0] : null,
       public_id: prod.public_id || null,
       sku: prod.sku || prod._id,
-      specs: prod.specs || {}
+      specs: normalizeSpecs(prod.specs)
     }));
 
     // Retornar los productos formateados
@@ -124,7 +139,7 @@ controladoresProductos.getProduct = async (req, res) => {
       img: prod.imagenProducto && prod.imagenProducto.length > 0 ? prod.imagenProducto[0] : null,
       public_id: prod.public_id || null,
       sku: prod.sku || prod._id,
-      specs: prod.specs || {}
+      specs: normalizeSpecs(prod.specs)
     };
 
     // Responder con los datos del producto
@@ -258,7 +273,7 @@ controladoresProductos.updateProduct = async (req, res) => {
       ...(price !== undefined && { precio: Number(price) }),
       ...(stock !== undefined && { stock: Number(stock) }),
       ...(category && { idCategoria: category }),
-      ...(specs && { specs })
+      ...(specs !== undefined && { specs: normalizeSpecs(specs) })
     };
 
     // Si se adjunta un nuevo archivo de imagen vía Multer
@@ -295,7 +310,7 @@ controladoresProductos.updateProduct = async (req, res) => {
       img: productoActualizado.imagenProducto && productoActualizado.imagenProducto.length > 0 ? productoActualizado.imagenProducto[0] : null,
       public_id: productoActualizado.public_id || null,
       sku: productoActualizado.sku || productoActualizado._id,
-      specs: productoActualizado.specs || {}
+      specs: normalizeSpecs(productoActualizado.specs)
     };
 
     // Devolver el producto actualizado

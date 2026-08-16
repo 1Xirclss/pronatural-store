@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ADMIN_PREFIX } from '../../config';
 import { useAuth } from '../../hooks/useAuth';
 import { useGlobalData } from '../../context/GlobalDataContext';
+
 function MetricCardVendor({ icon, label, value, trend, isMeta, metaPercent }) {
   return (
     <div className="bg-[#161b1e] border border-white/5 rounded-[12px] p-6 relative">
@@ -25,17 +26,19 @@ function MetricCardVendor({ icon, label, value, trend, isMeta, metaPercent }) {
     </div>
   );
 }
+
 export default function VendorDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { sales, products, stats } = useGlobalData();
+  const { sales = [], products = [], stats = {} } = useGlobalData() || {};
   const firstName = user?.name ? user.name.split(' ')[0] : 'Vendedor';
-  const recentSales = sales.slice(0, 4); 
-  const topProducts = products.slice(0, 2); 
-  const vendorTotalRevenue = stats.totalRevenue; 
-  const vendorTotalItems = stats.totalItemsSold;
-  const metaMensual = stats?.metas?.mensual || 4500;
-  const meta = Math.min(100, Math.round((stats.monthRevenue / metaMensual) * 100));
+  const recentSales = (sales || []).slice(0, 4); 
+  const topProducts = (products || []).slice(0, 2); 
+  const vendorTotalRevenue = Number(stats?.totalRevenue || 0); 
+  const vendorTotalItems = stats?.totalItemsSold || 0;
+  const metaMensual = Number(stats?.metas?.mensual || 4500);
+  const meta = Math.min(100, Math.round(((Number(stats?.monthRevenue || 0)) / metaMensual) * 100));
+
   return (
     <div className="max-w-[1200px] mx-auto pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -79,28 +82,31 @@ export default function VendorDashboard() {
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {topProducts.map(p => (
-              <div key={p.id} className="bg-[#161b1e] border border-white/5 rounded-[12px] overflow-hidden group">
-                <div className="h-[180px] bg-[#0d1114] relative">
-                  <img src={p.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded-[6px] tracking-wide ${p.stock > 10 ? 'bg-[#1b4332] text-[#4ade80]' : 'bg-red-500/20 text-red-400'}`}>
-                      {p.stock > 10 ? 'En Stock' : 'Stock Bajo'}
-                    </span>
+            {topProducts.map(p => {
+              const price = Number(p.precio || p.price || 0);
+              return (
+                <div key={p.id || p._id} className="bg-[#161b1e] border border-white/5 rounded-[12px] overflow-hidden group">
+                  <div className="h-[180px] bg-[#0d1114] relative">
+                    <img src={p.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} alt={p.nombreProducto || p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-3 right-3">
+                      <span className={`px-2.5 py-1 text-[10px] font-bold rounded-[6px] tracking-wide ${p.stock > 10 ? 'bg-[#1b4332] text-[#4ade80]' : 'bg-red-500/20 text-red-400'}`}>
+                        {p.stock > 10 ? 'En Stock' : 'Stock Bajo'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-[15px] font-semibold text-white mb-2 leading-tight">{p.nombreProducto || p.name}</h3>
+                    <p className="text-[12px] text-gray-400 mb-6 leading-relaxed line-clamp-2">{p.descripcion || p.desc || ''}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[18px] font-bold text-[#75e29f]">$${price.toFixed(2)}</span>
+                      <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/registrar`)} className="w-10 h-10 rounded-[8px] bg-[#1b4332] hover:bg-[#286047] flex items-center justify-center text-[#4ade80] transition-colors cursor-pointer">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="p-5">
-                  <h3 className="text-[15px] font-semibold text-white mb-2 leading-tight">{p.name}</h3>
-                  <p className="text-[12px] text-gray-400 mb-6 leading-relaxed line-clamp-2">{p.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[18px] font-bold text-[#75e29f]">${p.price.toFixed(2)}</span>
-                    <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/registrar`)} className="w-10 h-10 rounded-[8px] bg-[#1b4332] hover:bg-[#286047] flex items-center justify-center text-[#4ade80] transition-colors cursor-pointer">
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         <div className="bg-[#161b1e] border border-white/5 rounded-[12px] flex flex-col h-full">
@@ -111,23 +117,27 @@ export default function VendorDashboard() {
             </button>
           </div>
           <div className="flex-1 p-6 space-y-6">
-            {recentSales.map(sale => (
-              <div key={sale.id} className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#1b4332] text-[#4ade80]`}>
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-[13px] text-gray-200 font-medium truncate">{sale.id}</p>
-                    <span className={`text-[12px] font-bold text-[#75e29f]`}>+${sale.amount.toFixed(2)}</span>
+            {recentSales.map(sale => {
+              const amount = Number(sale.total || sale.amount || 0);
+              const dateVal = sale.createdAt || sale.fecha || sale.date || Date.now();
+              return (
+                <div key={sale.id || sale._id} className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#1b4332] text-[#4ade80]">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                   </div>
-                  <div className="flex justify-between items-center text-[11px] text-gray-500">
-                    <p className="truncate">{sale.client || 'Cliente General'}</p>
-                    <p>{new Date(sale.date).toLocaleDateString()}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="text-[13px] text-gray-200 font-medium truncate">#{(sale.id || sale._id || '').toString().substring(0, 6)}</p>
+                      <span className="text-[12px] font-bold text-[#75e29f]">+$${amount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] text-gray-500">
+                      <p className="truncate">{sale.customerId?.nombre || sale.client || 'Cliente General'}</p>
+                      <p>{new Date(dateVal).toLocaleDateString()}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="p-4 border-t border-white/5 text-center">
             <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/historial`)} className="text-[11px] text-gray-400 hover:text-white transition-colors cursor-pointer w-full py-2">
