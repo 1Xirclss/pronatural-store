@@ -158,7 +158,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(customerData)
   }),
-  verifyCodeEmail: (verificationCodeRequest) => apiRequest('/auth/verifyCodeEmail', {
+  verifyCodeEmail: (verificationCodeRequest) => apiRequest('/auth/verifyCode', {
     method: 'POST',
     body: JSON.stringify({ verificationCodeRequest })
   }),

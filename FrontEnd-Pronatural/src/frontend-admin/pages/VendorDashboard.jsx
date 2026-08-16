@@ -43,7 +43,7 @@ export default function VendorDashboard() {
           <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight">Bienvenido de nuevo, {firstName}</h1>
           <p className="text-gray-400 text-[14px] mt-1">Panel de Ventas Personal. Resumen de tu desempeño diario.</p>
         </div>
-        <button onClick={() => navigate('/ventas/registrar')} className="w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-2.5 bg-[#75e29f] hover:bg-[#5bc285] text-[#0a110d] text-[13px] font-bold rounded-[10px] transition-colors cursor-pointer shadow-[0_0_15px_rgba(117,226,159,0.2)]">
+        <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/registrar`)} className="w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-2.5 bg-[#75e29f] hover:bg-[#5bc285] text-[#0a110d] text-[13px] font-bold rounded-[10px] transition-colors cursor-pointer shadow-[0_0_15px_rgba(117,226,159,0.2)]">
           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           Nueva Venta
         </button>
@@ -94,7 +94,7 @@ export default function VendorDashboard() {
                   <p className="text-[12px] text-gray-400 mb-6 leading-relaxed line-clamp-2">{p.desc}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-[18px] font-bold text-[#75e29f]">${p.price.toFixed(2)}</span>
-                    <button onClick={() => navigate('/ventas/registrar')} className="w-10 h-10 rounded-[8px] bg-[#1b4332] hover:bg-[#286047] flex items-center justify-center text-[#4ade80] transition-colors cursor-pointer">
+                    <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/registrar`)} className="w-10 h-10 rounded-[8px] bg-[#1b4332] hover:bg-[#286047] flex items-center justify-center text-[#4ade80] transition-colors cursor-pointer">
                       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
                     </button>
                   </div>
@@ -130,7 +130,7 @@ export default function VendorDashboard() {
             ))}
           </div>
           <div className="p-4 border-t border-white/5 text-center">
-            <button onClick={() => navigate('/ventas/historial')} className="text-[11px] text-gray-400 hover:text-white transition-colors cursor-pointer w-full py-2">
+            <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/historial`)} className="text-[11px] text-gray-400 hover:text-white transition-colors cursor-pointer w-full py-2">
               Ver Todas las Transacciones
             </button>
           </div>

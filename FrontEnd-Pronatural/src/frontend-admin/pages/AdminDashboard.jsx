@@ -136,7 +136,7 @@ export default function AdminDashboard() {
           <div className="bg-[#161b1e] rounded-[14px] p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-[16px] text-white font-semibold">Pedidos Recientes</h2>
-            <button onClick={() => navigate('/ventas/historial')} className="text-[#30b466] text-[12px] font-medium hover:underline cursor-pointer">Ver Todo</button>
+            <button onClick={() => navigate(`${ADMIN_PREFIX}/ventas/historial`)} className="text-[#30b466] text-[12px] font-medium hover:underline cursor-pointer">Ver Todo</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[500px]">

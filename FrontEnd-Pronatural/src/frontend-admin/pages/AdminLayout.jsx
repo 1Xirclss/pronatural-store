@@ -224,7 +224,7 @@ function AdminTopbar({ toggleSidebar }) {
             title: `Stock Bajo: ${p.nombreProducto || p.name || 'Producto'}`,
             message: `Quedan únicamente ${stock} unidades disponibles.`,
             time: 'Alerta de Inventario',
-            link: '/inventario'
+            link: `${ADMIN_PREFIX}/inventario`
           });
         }
       });
