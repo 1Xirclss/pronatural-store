@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ADMIN_PREFIX } from '../../../config';
 import { api } from '../../../utils/api';
+import { isValidPhoneNumber } from '../../../utils/phoneFormatter';
+import PhoneInputField from '../../../components/common/PhoneInputField';
 
 export default function AdminRegister() {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({ mode: 'onTouched' });
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm({ mode: 'onTouched' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1 = form, 2 = otp
@@ -101,6 +103,25 @@ export default function AdminRegister() {
                   className={`w-full bg-[#0d1114] border ${errors.email ? 'border-red-500/50' : 'border-white/10'} rounded-[10px] px-4 py-3 text-[14px] text-white placeholder-gray-600 focus:outline-none focus:border-[#4ade80] transition-colors`}
                 />
                 {errors.email && <p className="text-red-400 text-[11px] mt-1.5 font-medium">{errors.email.message}</p>}
+              </div>
+              <div>
+                <label className="text-gray-400 text-[11px] uppercase tracking-wider font-semibold mb-2 block">Número de Teléfono</label>
+                <Controller
+                  name="phone"
+                  control={control}
+                  rules={{
+                    required: 'El teléfono es requerido',
+                    validate: (val) => isValidPhoneNumber(val) || 'El teléfono debe tener 8 dígitos (ej: +503 7000-0000)'
+                  }}
+                  render={({ field }) => (
+                    <PhoneInputField
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      error={errors.phone?.message}
+                      darkTheme={true}
+                    />
+                  )}
+                />
               </div>
               <div>
                 <label className="text-gray-400 text-[11px] uppercase tracking-wider font-semibold mb-2 block">Contraseña</label>

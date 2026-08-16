@@ -54,22 +54,26 @@ export default function EditSaleModal({ isOpen, onClose, sale, onSave }) {
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full bg-[#0d1114] border border-white/10 rounded-[8px] py-3 px-4 text-[13px] text-white focus:outline-none focus:border-[#4ade80]/50 appearance-none transition-colors cursor-pointer"
               >
+                <option value="Pendiente">Pendiente</option>
+                <option value="En Proceso">En Proceso</option>
+                <option value="Enviado">Enviado</option>
+                <option value="Entregado">Entregado</option>
                 <option value="Completado">Completado</option>
                 <option value="Pendiente WhatsApp">Pendiente WhatsApp</option>
-                <option value="cancelled">Cancelado</option>
+                <option value="Cancelado">Cancelado</option>
               </select>
               <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400">
                 <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
               </div>
             </div>
-            {status === 'cancelled' && sale.status !== 'cancelled' && (
+            {(status === 'Cancelado' || status === 'cancelled') && sale.status !== 'Cancelado' && sale.status !== 'cancelled' && (
               <p className="text-[11px] text-orange-400 mt-2">
                 ⚠️ Al cambiar el estado a "Cancelado", los productos serán devueltos al inventario.
               </p>
             )}
-            {status === 'Completado' && sale.status === 'Pendiente WhatsApp' && (
+            {(status === 'Completado' || status === 'Entregado') && (sale.status === 'Pendiente WhatsApp' || sale.status === 'Pendiente') && (
               <p className="text-[11px] text-[#4ade80] mt-2">
-                ✓ Al cambiar a "Completado", se descontará el stock.
+                ✓ Al cambiar a "{status}", se descontará el stock de inventario.
               </p>
             )}
           </div>

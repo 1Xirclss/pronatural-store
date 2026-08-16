@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import toast from 'react-hot-toast';
 export default function SalesEntry() {
-  const { products, customers, addSale } = useGlobalData();
+  const { products, customers, addSale, config } = useGlobalData();
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [client, setClient] = useState('Cliente General');
@@ -11,38 +11,56 @@ export default function SalesEntry() {
   const [showTicket, setShowTicket] = useState(false);
   const [lastSale, setLastSale] = useState(null);
 
-  const exactMatch = products.find(p => p.sku && p.sku.toLowerCase() === search.toLowerCase());
-  const filteredProducts = search.length > 1 
-    ? products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()))
+  const taxRate = config?.taxRate ?? 0;
+
+  // Normalizar nombre y SKU del producto (MongoDB usa nombreProducto, localmente puede ser name)
+  const getName = (p) => p.nombreProducto || p.name || p.nombre || '';
+  const getSku = (p) => p.sku || p.codigo || '';
+  const getPrice = (p) => typeof p.precio === 'number' ? p.precio : (typeof p.price === 'number' ? p.price : 0);
+
+  const exactMatch = products.find(p => getSku(p) && getSku(p).toLowerCase() === search.toLowerCase());
+  const filteredProducts = search.length > 1
+    ? products.filter(p =>
+        getName(p).toLowerCase().includes(search.toLowerCase()) ||
+        getSku(p).toLowerCase().includes(search.toLowerCase())
+      )
     : [];
 
   const addToCart = (product) => {
-    const existing = cart.find(item => item.id === product.id);
+    const prodId = product._id || product.id;
+    const existing = cart.find(item => (item._id || item.id) === prodId);
     if (existing) {
       if (existing.qty >= product.stock) {
         toast.error('No hay suficiente stock');
         return;
       }
-      setCart(cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+      setCart(cart.map(item => (item._id || item.id) === prodId ? { ...item, qty: item.qty + 1 } : item));
     } else {
       if (product.stock <= 0) {
         toast.error('Producto sin stock');
         return;
       }
-      setCart([...cart, { ...product, qty: 1 }]);
+      // Normalizar campos para que el ticket funcione correctamente
+      setCart([...cart, {
+        ...product,
+        id: prodId,
+        name: getName(product),
+        price: getPrice(product),
+        qty: 1
+      }]);
     }
     setSearch('');
   };
   const updateQty = (id, delta) => {
     setCart(cart.map(item => {
-      if (item.id === id) {
+      if ((item._id || item.id) === id) {
         const newQty = item.qty + delta;
         if (newQty > item.stock) {
           toast.error('Has alcanzado el límite de stock');
           return item;
         }
         if (newQty < 1) {
-          return null; 
+          return null;
         }
         return { ...item, qty: newQty };
       }
@@ -50,7 +68,7 @@ export default function SalesEntry() {
     }).filter(Boolean));
   };
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-  const taxes = 0; 
+  const taxes = (subtotal * taxRate) / 100;
   const total = subtotal + taxes;
   const change = Math.max(0, parseFloat(amountGiven || '0') - total);
   const handleConfirmSale = async () => {
@@ -66,8 +84,10 @@ export default function SalesEntry() {
       const saved = await addSale({
         client,
         amount: total,
+        total,
         paymentMethod,
-        items: cart.map(c => ({ id: c.id || c._id, quantity: c.qty, name: c.name, price: c.price })),
+        products: cart.map(c => ({ productId: c._id || c.id, quantity: c.qty, name: c.name, price: c.price })),
+        items: cart.map(c => ({ id: c._id || c.id, quantity: c.qty, name: c.name, price: c.price })),
         status: 'Completado'
       });
       setLastSale({
@@ -125,7 +145,7 @@ export default function SalesEntry() {
                       onClick={() => addToCart(p)}
                       className="flex items-center gap-4 p-3 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 transition-colors"
                     >
-                      <img src={p.img || 'https://images.unsplash.com/photo-1587049352851-8d4e89134b3e?w=40&fit=crop'} className="w-10 h-10 rounded-[6px] object-cover" alt="" />
+                      <img src={p.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} className="w-10 h-10 rounded-[6px] object-cover" alt="" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] text-white font-medium truncate">{p.name}</p>
                         <p className="text-[11px] text-gray-500 font-mono">Stock: {p.stock} | {p.sku}</p>
@@ -158,7 +178,7 @@ export default function SalesEntry() {
                       <tr key={item.id} className="hover:bg-white/[0.01] transition-colors">
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-4">
-                            <img src={item.img || 'https://images.unsplash.com/photo-1587049352851-8d4e89134b3e?w=60&fit=crop'} className="w-12 h-12 rounded-[8px] object-cover bg-[#0d1114]" alt="" />
+                            <img src={item.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} className="w-12 h-12 rounded-[8px] object-cover bg-[#0d1114]" alt="" />
                             <div>
                               <p className="text-[14px] text-white font-medium">{item.name}</p>
                               <p className="text-[11px] text-gray-500 line-clamp-1">{item.desc}</p>
@@ -250,7 +270,7 @@ export default function SalesEntry() {
                   <span className="text-gray-200">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-gray-400">Impuestos (0%)</span>
+                  <span className="text-gray-400">Impuestos ({taxRate}%)</span>
                   <span className="text-gray-200">${taxes.toFixed(2)}</span>
                 </div>
               </div>

@@ -88,7 +88,7 @@ export default function AdminLogin() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-gray-400 text-[11px] uppercase tracking-wider font-semibold">Contraseña</label>
-                  <Link to="/admin/recover" className="text-[#30b466] text-[11px] font-medium hover:text-[#4ade80] transition-colors">¿Olvidaste tu contraseña?</Link>
+                  <Link to={`${ADMIN_PREFIX}/recover`} className="text-[#30b466] text-[11px] font-medium hover:text-[#4ade80] transition-colors">¿Olvidaste tu contraseña?</Link>
                 </div>
                 <div className="relative">
                   <input
@@ -174,7 +174,7 @@ export default function AdminLogin() {
 
         {step === 1 && (
           <p className="text-center text-gray-500 text-[12px] mt-6">
-            ¿Aún no tienes cuenta? <Link to="/admin/register" className="text-white hover:text-[#4ade80] font-medium transition-colors">Solicitar Acceso</Link>
+            ¿Aún no tienes cuenta? <Link to={`${ADMIN_PREFIX}/register`} className="text-white hover:text-[#4ade80] font-medium transition-colors">Solicitar Acceso</Link>
           </p>
         )}
       </div>

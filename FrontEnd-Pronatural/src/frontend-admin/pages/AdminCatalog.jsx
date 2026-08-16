@@ -5,6 +5,7 @@ function ProductModal({ onClose, onSave, initialData }) {
   const { categories: globalCategories } = useGlobalData();
   const categories = globalCategories.map(c => typeof c === 'string' ? c : (c.nombre || c.name)).filter(Boolean);
   const isEditing = !!initialData;
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState(() => {
     if (initialData) {
       return {
@@ -16,32 +17,50 @@ function ProductModal({ onClose, onSave, initialData }) {
       };
     }
     return {
-      name: '', price: '', category: categories[0] || 'Otro', desc: '', stock: '', img: '',
+      name: '', price: '', category: categories[0] || 'Aceites y Bálsamos', desc: '', stock: '', img: '',
       originSpec: '', altitudeSpec: '', flavorSpec: '', processSpec: ''
     };
   });
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.price) { toast.error('Nombre y precio requeridos'); return; }
-    onSave({
-      id: isEditing ? form.id : String(Date.now()),
-      name: form.name,
-      price: parseFloat(form.price),
-      category: form.category,
-      desc: form.desc,
-      img: form.img,
-      stock: parseInt(form.stock) || 0,
-      sku: form.sku || `PN-${form.category.substring(0,3).toUpperCase()}-${String(Date.now()).slice(-3)}`,
-      origin: form.originSpec,
-      specs: {
-        ORIGEN: form.originSpec,
-        ALTITUD: form.altitudeSpec,
-        SABOR: form.flavorSpec,
-        PROCESO: form.processSpec
-      },
-      file: form.file
-    });
-    onClose();
+    if (!form.name || !form.name.trim()) { toast.error('El nombre del producto es requerido'); return; }
+    const priceNum = parseFloat(form.price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast.error('El precio debe ser un número mayor a 0');
+      return;
+    }
+    const stockNum = parseInt(form.stock) || 0;
+    if (stockNum < 0) {
+      toast.error('El stock debe ser mayor o igual a 0');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        id: isEditing ? (form.id || form._id) : undefined,
+        name: form.name.trim(),
+        price: priceNum,
+        category: form.category || 'General',
+        desc: form.desc ? form.desc.trim() : '',
+        img: form.img || '',
+        stock: stockNum,
+        sku: form.sku || `PN-${(form.category || 'GEN').substring(0,3).toUpperCase()}-${String(Date.now()).slice(-4)}`,
+        origin: form.originSpec || '',
+        specs: {
+          ORIGEN: form.originSpec || '',
+          ALTITUD: form.altitudeSpec || '',
+          SABOR: form.flavorSpec || '',
+          PROCESO: form.processSpec || ''
+        },
+        file: form.file
+      });
+      onClose();
+    } catch (err) {
+      console.error("Error al guardar producto:", err);
+      toast.error(err.message || "Error al guardar el producto");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -78,16 +97,31 @@ function ProductModal({ onClose, onSave, initialData }) {
             </select>
           </div>
           <div>
-            <label className="text-gray-400 text-xs uppercase tracking-wider mb-1.5 block">URL de la Imagen (Cloudinary)</label>
+            <label className="text-gray-400 text-xs uppercase tracking-wider mb-1.5 block">Imagen del Producto (Seleccionar archivo)</label>
             <input 
-              type="url" 
-              value={form.img || ''}
-              onChange={(e) => setForm({ ...form, img: e.target.value, file: null })}
-              placeholder="https://res.cloudinary.com/..."
-              className="w-full bg-[#0d1117] border border-[#1e2a1e] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#22c55e] transition-colors" />
-            {form.img && (
-              <div className="mt-3 h-16 w-16 rounded-[8px] overflow-hidden bg-white/5 border border-white/10">
-                <img src={form.img} alt="Preview" className="w-full h-full object-cover" />
+              type="file" 
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const preview = URL.createObjectURL(file);
+                  setForm({ ...form, file, previewUrl: preview });
+                }
+              }}
+              className="w-full bg-[#0d1117] border border-[#1e2a1e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#22c55e] transition-colors file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#22c55e]/20 file:text-[#4ade80] hover:file:bg-[#22c55e]/30 cursor-pointer" 
+            />
+            {(form.previewUrl || form.img) && (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-16 w-16 rounded-[8px] overflow-hidden bg-white/5 border border-white/10 relative">
+                  <img src={form.previewUrl || form.img} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+                <div className="text-xs text-gray-400">
+                  {form.file ? (
+                    <p className="text-[#4ade80] font-medium">📷 {form.file.name}</p>
+                  ) : (
+                    <p>Imagen actual del producto</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -127,9 +161,23 @@ function ProductModal({ onClose, onSave, initialData }) {
               className="w-full bg-[#0d1117] border border-[#1e2a1e] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#22c55e] transition-colors resize-none" />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-[#1e2a1e] text-gray-400 rounded-lg text-sm hover:bg-[#1e2a1e] transition-colors cursor-pointer">Cancelar</button>
-            <button type="submit" className="flex-1 py-2.5 bg-[#22c55e] text-[#0d1117] font-bold rounded-lg text-sm hover:bg-[#16a34a] transition-colors cursor-pointer">
-              {isEditing ? 'Guardar Cambios' : 'Crear Producto'}
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-1 py-2.5 border border-[#1e2a1e] text-gray-400 rounded-lg text-sm hover:bg-[#1e2a1e] transition-colors disabled:opacity-50 cursor-pointer">Cancelar</button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 bg-[#22c55e] text-[#0d1117] font-bold rounded-lg text-sm hover:bg-[#16a34a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Guardando...
+                </>
+              ) : (
+                isEditing ? 'Guardar Cambios' : 'Crear Producto'
+              )}
             </button>
           </div>
         </form>
@@ -143,10 +191,10 @@ function ProductCard({ product, onEdit, onDelete }) {
     <div className="bg-[#161b22] border border-[#1e2a1e] rounded-xl overflow-hidden group hover:border-[#22c55e]/40 transition-all duration-200 flex flex-col h-full">
       <div className="relative h-44 bg-[#0d1117] overflow-hidden shrink-0">
         <img
-          src={product.img || 'https://images.unsplash.com/photo-1587049352851-8d4e89134b3e?w=400&fit=crop'}
+          src={product.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={e => { e.target.src = 'https://images.unsplash.com/photo-1587049352851-8d4e89134b3e?w=400&fit=crop'; }}
+          onError={e => { e.target.src = 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'; }}
         />
         <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-[6px]">
           <span className={`text-[10px] font-bold ${stockNum <= 15 ? 'text-red-400' : 'text-[#4ade80]'}`}>
@@ -172,7 +220,7 @@ function ProductCard({ product, onEdit, onDelete }) {
           <button
             onClick={() => {
               if (window.confirm('¿Seguro que deseas eliminar este producto?')) {
-                onDelete(product.id);
+                onDelete(product.id || product._id);
               }
             }}
             className="w-10 flex items-center justify-center py-2 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold rounded-lg hover:bg-red-500/20 transition-colors cursor-pointer"
@@ -197,15 +245,22 @@ export default function AdminCatalog() {
     return (p.category || '').toUpperCase().includes(activeFilter.toUpperCase()) ||
            (p.name || '').toLowerCase().includes(activeFilter.toLowerCase());
   });
-  const handleSave = (productData) => {
-    if (editingProduct) {
-      updateProduct(productData.id, productData);
-      toast.success('Producto actualizado');
-    } else {
-      addProduct(productData);
-      toast.success('Producto creado');
+  const handleSave = async (productData) => {
+    try {
+      if (editingProduct) {
+        await updateProduct(productData.id || productData._id, productData);
+        toast.success('Producto actualizado exitosamente');
+      } else {
+        await addProduct(productData);
+        toast.success('Producto registrado exitosamente');
+      }
+      setEditingProduct(null);
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error al guardar producto:', error);
+      toast.error(error.message || 'Error al registrar el producto');
+      throw error;
     }
-    setEditingProduct(null);
   };
   const handleEditClick = (product) => {
     setEditingProduct(product);

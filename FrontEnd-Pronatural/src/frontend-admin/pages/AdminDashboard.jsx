@@ -48,18 +48,26 @@ function MetricCard({ icon, label, value, trend, trendUp, isAlert }) {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { sales, products, stats } = useGlobalData();
-  const recentOrders = sales.slice(0, 5); 
+  const recentOrders = sales.slice(0, 5);
   const lowStockThreshold = 15;
   const lowStockItems = products.filter(p => p.stock <= lowStockThreshold);
-  const chartData = [
-    { name: 'Lun', ventas: 120 },
-    { name: 'Mar', ventas: 210 },
-    { name: 'Mie', ventas: 180 },
-    { name: 'Jue', ventas: 240 },
-    { name: 'Vie', ventas: 300 },
-    { name: 'Sab', ventas: 350 },
-    { name: 'Dom', ventas: 150 },
-  ];
+
+  // Calcular ventas reales de los últimos 7 días agrupadas por día de la semana
+  const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+  const hoy = new Date();
+  const chartData = Array.from({ length: 7 }, (_, i) => {
+    const fecha = new Date(hoy);
+    fecha.setDate(hoy.getDate() - (6 - i));
+    const diaLabel = diasSemana[fecha.getDay()];
+    const ventasDelDia = sales
+      .filter(s => {
+        const d = new Date(s.createdAt || s.fecha || s.date || 0);
+        return d.toDateString() === fecha.toDateString();
+      })
+      .reduce((acc, s) => acc + (s.total || s.amount || 0), 0);
+    return { name: diaLabel, ventas: parseFloat(ventasDelDia.toFixed(2)) };
+  });
+
   return (
     <div className="max-w-[1200px] mx-auto pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -68,7 +76,7 @@ export default function AdminDashboard() {
           <p className="text-gray-400 text-[14px] mt-1">Resumen de hoy y acciones pendientes.</p>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap gap-3">
-          <button onClick={() => navigate('/reportes')} className="flex items-center gap-2 px-4 py-2.5 bg-transparent border border-white/10 text-gray-300 text-[13px] font-medium rounded-[10px] hover:bg-white/5 transition-colors cursor-pointer">
+          <button onClick={() => navigate(`${ADMIN_PREFIX}/reportes`)} className="flex items-center gap-2 px-4 py-2.5 bg-transparent border border-white/10 text-gray-300 text-[13px] font-medium rounded-[10px] hover:bg-white/5 transition-colors cursor-pointer">
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Exportar Reporte
           </button>
@@ -173,9 +181,45 @@ export default function AdminDashboard() {
         </div>
         </div> {/* Cierra el flex col del bloque izquierdo */}
 
-        {/* Sidebar Derecha: Alertas de Stock y CTA */}
+        {/* Sidebar Derecha: Metas de Ventas y Alertas de Stock */}
         <div className="flex flex-col gap-6">
-          <div className="bg-[#161b1e] rounded-[14px] p-6 flex-1 max-h-[400px] overflow-y-auto custom-scrollbar">
+          <div className="bg-[#161b1e] rounded-[14px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[16px] text-white font-semibold">Cumplimiento de Metas</h2>
+              <button onClick={() => navigate(`${ADMIN_PREFIX}/ajustes`)} className="text-[#30b466] hover:underline text-[11px] font-medium">Configurar</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-1 text-[12px]">
+                  <span className="text-gray-300">Meta Diaria (${(stats?.metas?.diaria || 150).toLocaleString()})</span>
+                  <span className="text-[#4ade80] font-bold">${(stats?.todayRevenue || 0).toFixed(2)} ({Math.min(100, Math.round(((stats?.todayRevenue || 0) / (stats?.metas?.diaria || 150)) * 100))}%)</span>
+                </div>
+                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#4ade80] rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.round(((stats?.todayRevenue || 0) / (stats?.metas?.diaria || 150)) * 100))}%` }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1 text-[12px]">
+                  <span className="text-gray-300">Meta Semanal (${(stats?.metas?.semanal || 1050).toLocaleString()})</span>
+                  <span className="text-[#30b466] font-bold">${(stats?.weekRevenue || 0).toFixed(2)} ({Math.min(100, Math.round(((stats?.weekRevenue || 0) / (stats?.metas?.semanal || 1050)) * 100))}%)</span>
+                </div>
+                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#30b466] rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.round(((stats?.weekRevenue || 0) / (stats?.metas?.semanal || 1050)) * 100))}%` }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1 text-[12px]">
+                  <span className="text-gray-300">Meta Mensual (${(stats?.metas?.mensual || 4500).toLocaleString()})</span>
+                  <span className="text-[#75e29f] font-bold">${(stats?.monthRevenue || 0).toFixed(2)} ({Math.min(100, Math.round(((stats?.monthRevenue || 0) / (stats?.metas?.mensual || 4500)) * 100))}%)</span>
+                </div>
+                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#75e29f] rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.round(((stats?.monthRevenue || 0) / (stats?.metas?.mensual || 4500)) * 100))}%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#161b1e] rounded-[14px] p-6 flex-1 max-h-[350px] overflow-y-auto custom-scrollbar">
             <div className="flex items-center gap-2 mb-6">
               <svg width="18" height="18" fill="none" stroke="#fca5a5" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -189,7 +233,7 @@ export default function AdminDashboard() {
                 lowStockItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 group">
                     <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-[#0d1114]">
-                      <img src={item.img || 'https://images.unsplash.com/photo-1587049352851-8d4e89134b3e?w=60&h=60&fit=crop'} alt={item.name} className="w-full h-full object-cover" />
+                      <img src={item.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} alt={item.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] text-gray-200 font-medium truncate">{item.name}</p>
@@ -197,7 +241,7 @@ export default function AdminDashboard() {
                         {item.stock <= 0 ? 'Agotado' : `Solo quedan ${item.stock} unidades`}
                       </p>
                     </div>
-                    <button onClick={() => navigate('/inventario')} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#30b466]/20 hover:text-[#4ade80] transition-colors cursor-pointer flex-shrink-0">
+                    <button onClick={() => navigate(`${ADMIN_PREFIX}/inventario`)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#30b466]/20 hover:text-[#4ade80] transition-colors cursor-pointer flex-shrink-0">
                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
                     </button>
                   </div>

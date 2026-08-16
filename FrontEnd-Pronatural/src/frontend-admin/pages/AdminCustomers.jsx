@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { toast } from 'react-hot-toast';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { isValidPhoneNumber, formatElSalvadorPhone } from '../../utils/phoneFormatter';
+import PhoneInputField from '../../components/common/PhoneInputField';
+
 export default function AdminCustomers() {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useGlobalData();
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm({
     defaultValues: {
       name: '',
       lastName: '',
@@ -31,7 +34,7 @@ export default function AdminCustomers() {
     }
   };
   const resetForm = () => {
-    reset({ name: '', lastName: '', email: '', phone: '', birthdate: '', status: 'Active' });
+    reset({ name: '', lastName: '', email: '', phone: '+503 ', birthdate: '', status: 'Active' });
     setIsEditing(false);
     setEditingId(null);
   };
@@ -39,7 +42,7 @@ export default function AdminCustomers() {
     setValue('name', customer.name);
     setValue('lastName', customer.lastName || '');
     setValue('email', customer.email);
-    setValue('phone', customer.phone);
+    setValue('phone', formatElSalvadorPhone(customer.phone));
     setValue('birthdate', customer.birthdate ? customer.birthdate.split('T')[0] : '');
     setValue('status', customer.status || 'Active');
     setEditingId(customer.id);
@@ -96,11 +99,20 @@ export default function AdminCustomers() {
             </div>
             <div>
               <label className="text-gray-400 text-xs uppercase tracking-wider mb-1.5 block">Teléfono</label>
-              <input
-                type="text"
-                {...register("phone")}
-                placeholder="+503 7000 0000"
-                className="w-full bg-[#0d1114] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#4ade80] transition-colors"
+              <Controller
+                name="phone"
+                control={control}
+                rules={{
+                  validate: (val) => !val || val === '+503 ' || isValidPhoneNumber(val) || "El teléfono debe tener 8 dígitos (ej: +503 7000-0000)"
+                }}
+                render={({ field }) => (
+                  <PhoneInputField
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    error={errors.phone?.message}
+                    darkTheme={true}
+                  />
+                )}
               />
             </div>
             <div>
@@ -146,35 +158,35 @@ export default function AdminCustomers() {
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Nombre</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Apellido</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Contacto</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Nacimiento</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Estado</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium text-right">Acciones</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Nombre</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Apellido</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Contacto</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Nacimiento</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Estado</th>
+                  <th className="pb-3 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {customers && customers.length > 0 ? (
                   customers.map(c => (
                     <tr key={c.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="py-4 text-[13px] text-white font-medium">{c.name}</td>
-                      <td className="py-4 text-[13px] text-white font-medium">{c.lastName}</td>
-                      <td className="py-4 text-[13px] text-gray-400">
+                      <td className="py-4 pr-4 whitespace-nowrap text-[13px] text-white font-medium">{c.name}</td>
+                      <td className="py-4 pr-4 whitespace-nowrap text-[13px] text-white font-medium">{c.lastName}</td>
+                      <td className="py-4 pr-4 whitespace-nowrap text-[13px] text-gray-400">
                         <div>{c.email}</div>
                         <div className="text-[11px] text-gray-500">{c.phone}</div>
                       </td>
-                      <td className="py-4 text-[12px] text-gray-400">
+                      <td className="py-4 pr-4 whitespace-nowrap text-[12px] text-gray-400">
                         {c.birthdate ? c.birthdate.split('T')[0] : '-'}
                       </td>
-                      <td className="py-4">
+                      <td className="py-4 pr-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 rounded-[4px] text-[11px] font-semibold ${
                           c.status === 'Active' ? 'bg-[#1b4332]/50 text-[#4ade80]' : 'bg-red-950/50 text-red-400'
                         }`}>
                           {c.status === 'Active' ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
-                      <td className="py-4 text-right">
+                      <td className="py-4 whitespace-nowrap text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleEdit(c)}

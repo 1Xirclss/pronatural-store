@@ -34,14 +34,14 @@ export default function VendorDashboard() {
   const topProducts = products.slice(0, 2); 
   const vendorTotalRevenue = stats.totalRevenue; 
   const vendorTotalItems = stats.totalItemsSold;
-  const metaMensual = parseFloat(localStorage.getItem('meta_mensual') || '4500');
-  const meta = Math.min(100, Math.round((vendorTotalRevenue / metaMensual) * 100));
+  const metaMensual = stats?.metas?.mensual || 4500;
+  const meta = Math.min(100, Math.round((stats.monthRevenue / metaMensual) * 100));
   return (
     <div className="max-w-[1200px] mx-auto pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight">Bienvenido de nuevo, {firstName}</h1>
-          <p className="text-gray-400 text-[14px] mt-1">Panel de Ventas Personal. Aquí tienes un resumen de tu desempeño hoy.</p>
+          <p className="text-gray-400 text-[14px] mt-1">Panel de Ventas Personal. Resumen de tu desempeño diario.</p>
         </div>
         <button onClick={() => navigate('/ventas/registrar')} className="w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-2.5 bg-[#75e29f] hover:bg-[#5bc285] text-[#0a110d] text-[13px] font-bold rounded-[10px] transition-colors cursor-pointer shadow-[0_0_15px_rgba(117,226,159,0.2)]">
           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -82,7 +82,7 @@ export default function VendorDashboard() {
             {topProducts.map(p => (
               <div key={p.id} className="bg-[#161b1e] border border-white/5 rounded-[12px] overflow-hidden group">
                 <div className="h-[180px] bg-[#0d1114] relative">
-                  <img src={p.img || 'https://images.unsplash.com/photo-1587049352851-8d4e89134b3e?w=400&fit=crop'} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={p.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3">
                     <span className={`px-2.5 py-1 text-[10px] font-bold rounded-[6px] tracking-wide ${p.stock > 10 ? 'bg-[#1b4332] text-[#4ade80]' : 'bg-red-500/20 text-red-400'}`}>
                       {p.stock > 10 ? 'En Stock' : 'Stock Bajo'}

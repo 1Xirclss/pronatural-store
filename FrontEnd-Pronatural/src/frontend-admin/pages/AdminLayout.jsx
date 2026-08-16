@@ -98,19 +98,19 @@ function AdminSidebar({ isOpen, setIsOpen }) {
             <NavLink to={`${ADMIN_PREFIX}/catalogo`} className={navLink}>
               <IconInventory /><span>Catálogo</span>
             </NavLink>
-            <NavLink to="/inventario" className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/inventario`} className={navLink}>
               <IconInventory /><span>Inventario</span>
             </NavLink>
-            <NavLink to="/ventas/registrar" className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/ventas/registrar`} className={navLink}>
               <IconSales /><span>Nueva Venta</span>
             </NavLink>
-            <NavLink to="/ventas/historial" className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/ventas/historial`} className={navLink}>
               <IconReports /><span>Historial de Ventas</span>
             </NavLink>
             <NavLink to={`${ADMIN_PREFIX}/vendedores`} className={navLink}>
               <IconSuppliers /><span>Vendedores</span>
             </NavLink>
-            <NavLink to="/reportes" className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/reportes`} className={navLink}>
               <IconReports /><span>Reportes</span>
             </NavLink>
             <NavLink to={`${ADMIN_PREFIX}/resenas`} className={navLink}>
@@ -135,13 +135,13 @@ function AdminSidebar({ isOpen, setIsOpen }) {
         )}
         {role === 'Employee' && (
           <>
-            <NavLink to="/vendedor" end className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/vendedor`} end className={navLink}>
               <IconDashboard /><span>Panel de Control</span>
             </NavLink>
-            <NavLink to="/ventas/registrar" className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/ventas/registrar`} className={navLink}>
               <IconSales /><span>Nueva Venta</span>
             </NavLink>
-            <NavLink to="/ventas/historial" className={navLink}>
+            <NavLink to={`${ADMIN_PREFIX}/ventas/historial`} className={navLink}>
               <IconReports /><span>Historial de Ventas</span>
             </NavLink>
             <NavLink to={`${ADMIN_PREFIX}/catalogo`} className={navLink}>
@@ -157,7 +157,7 @@ function AdminSidebar({ isOpen, setIsOpen }) {
         )}
       </nav>
       <div className="px-4 pt-4 border-t border-white/5 space-y-1 mt-auto">
-        <NavLink to="/ajustes" className={navLink}>
+        <NavLink to={`${ADMIN_PREFIX}/ajustes`} className={navLink}>
           <IconSettings /><span>Ajustes</span>
         </NavLink>
         <button
@@ -172,72 +172,228 @@ function AdminSidebar({ isOpen, setIsOpen }) {
   );
 }
 function AdminTopbar({ toggleSidebar }) {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { products, sales } = useGlobalData();
+  const { products, sales, config } = useGlobalData();
   const [showProfile, setShowProfile] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
-  
-  const notifsEnabled = localStorage.getItem('notifs_enabled') !== 'false';
-  
-  // Generar notificaciones dinámicas
-  const notifications = [];
-  if (notifsEnabled) {
-    // Stock bajo (<=15)
-    products?.forEach(p => {
-      if ((p.stock || 0) <= 15) {
-        notifications.push({
-          id: `stock-${p._id || p.id}`,
-          title: `Stock Bajo: ${p.nombreProducto || p.name} (${p.stock} unid.)`,
-          time: 'Alerta de Inventario'
-        });
-      }
-    });
+  const [notifFilter, setNotifFilter] = useState('todas');
 
-    // Ventas recientes (las últimas 3)
+  const [readNotifs, setReadNotifs] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('admin_read_notifs') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const portalEnabled = config?.notificaciones?.enabled !== false;
+  const lowStockEnabled = config?.notificaciones?.lowStock !== false;
+  const outOfStockEnabled = config?.notificaciones?.outOfStock !== false;
+
+  const notifications = [];
+
+  if (portalEnabled) {
+    // 1. Productos Agotados (Stock 0) -> Crítico
+    if (outOfStockEnabled) {
+      products?.forEach(p => {
+        const stock = typeof p.stock === 'number' ? p.stock : 0;
+        if (stock === 0) {
+          notifications.push({
+            id: `out-${p._id || p.id}`,
+            type: 'alert',
+            severity: 'critical',
+            title: `¡Producto Agotado!`,
+            message: `${p.nombreProducto || p.name || 'Producto'} no tiene existencias.`,
+            time: 'Alerta Crítica',
+            link: `${ADMIN_PREFIX}/inventario`
+          });
+        }
+      });
+    }
+
+    // 2. Stock Bajo (1..15) -> Advertencia
+    if (lowStockEnabled) {
+      products?.forEach(p => {
+        const stock = typeof p.stock === 'number' ? p.stock : 0;
+        if (stock > 0 && stock <= 15) {
+          notifications.push({
+            id: `low-${p._id || p.id}`,
+            type: 'alert',
+            severity: 'warning',
+            title: `Stock Bajo: ${p.nombreProducto || p.name || 'Producto'}`,
+            message: `Quedan únicamente ${stock} unidades disponibles.`,
+            time: 'Alerta de Inventario',
+            link: '/inventario'
+          });
+        }
+      });
+    }
+
+    // 3. Ventas Recientes -> Éxito
     const recentSales = (sales || [])
-      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
-      .slice(0, 3);
-      
+      .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
+      .slice(0, 5);
+
     recentSales.forEach(s => {
-      const time = s.createdAt ? new Date(s.createdAt).toLocaleString() : 'Reciente';
+      const timeStr = s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Reciente';
+      const total = typeof s.total === 'number' ? s.total.toFixed(2) : (s.total || '0.00');
       notifications.push({
         id: `sale-${s._id || s.id}`,
-        title: `Nueva Venta: #${(s._id || s.id).toString().substring(0,6)}`,
-        time: time
+        type: 'sale',
+        severity: 'info',
+        title: `Nueva Venta #${(s._id || s.id).toString().substring(0, 6).toUpperCase()}`,
+        message: `Venta realizada exitosamente por $${total}`,
+        time: timeStr,
+        link: `${ADMIN_PREFIX}/ventas/historial`
       });
     });
   }
+
+  const unreadCount = notifications.filter(n => !readNotifs.includes(n.id)).length;
+
+  const markAsRead = (id) => {
+    if (!readNotifs.includes(id)) {
+      const updated = [...readNotifs, id];
+      setReadNotifs(updated);
+      localStorage.setItem('admin_read_notifs', JSON.stringify(updated));
+    }
+  };
+
+  const markAllAsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    const updated = Array.from(new Set([...readNotifs, ...allIds]));
+    setReadNotifs(updated);
+    localStorage.setItem('admin_read_notifs', JSON.stringify(updated));
+  };
+
+  const filteredNotifs = notifications.filter(n => {
+    if (notifFilter === 'alertas') return n.type === 'alert';
+    if (notifFilter === 'ventas') return n.type === 'sale';
+    return true;
+  });
+
   return (
-    <header className="h-[72px] flex items-center justify-between md:justify-end px-4 md:px-8 flex-shrink-0 bg-[#0d1114] border-b border-white/5">
+    <header className="h-[72px] flex items-center justify-between md:justify-end px-4 md:px-8 flex-shrink-0 bg-[#0d1114] border-b border-white/5 relative z-40">
       <button onClick={toggleSidebar} className="md:hidden text-gray-400 hover:text-white p-2">
         <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       </button>
+      
       <div className="flex items-center gap-4 md:gap-6">
+        {/* Notificaciones */}
         <div className="relative">
-          <button onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }} className="relative p-2 text-gray-400 hover:text-white transition-colors cursor-pointer">
+          <button
+            onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }}
+            className="relative p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+            title="Notificaciones"
+          >
             <IconBell />
-            {notifsEnabled && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 border border-[#0d1114] rounded-full"></span>}
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-[#30b466] rounded-full shadow-lg shadow-[#30b466]/40 animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
+
           {showNotif && (
-            <div className="absolute right-0 mt-2 w-72 bg-[#161b1e] border border-white/10 rounded-[10px] shadow-2xl z-50 overflow-hidden">
-              <div className="p-3 border-b border-white/10 bg-[#0d1114]">
-                <h3 className="text-white text-[13px] font-semibold">Notificaciones</h3>
+            <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-[#161b1e] border border-white/10 rounded-[14px] shadow-2xl z-50 overflow-hidden">
+              <div className="p-4 border-b border-white/10 bg-[#0d1114] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-white text-[14px] font-semibold">Notificaciones</h3>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 text-[11px] font-bold bg-[#1b4332] text-[#4ade80] rounded-full">
+                      {unreadCount} nuevas
+                    </span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-[11px] text-[#4ade80] hover:underline font-medium cursor-pointer"
+                  >
+                    Marcar todas leídas
+                  </button>
+                )}
               </div>
-              <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                {notifications.length > 0 ? notifications.map(n => (
-                  <div key={n.id} className="p-3 border-b border-white/5 hover:bg-white/5 transition-colors cursor-default">
-                    <p className="text-gray-200 text-[13px]">{n.title}</p>
-                    <p className="text-gray-500 text-[11px] mt-1">{n.time}</p>
+
+              <div className="flex border-b border-white/5 bg-[#121619] p-1 gap-1 text-[12px]">
+                <button
+                  onClick={() => setNotifFilter('todas')}
+                  className={`flex-1 py-1.5 rounded-[6px] font-medium transition-colors cursor-pointer ${notifFilter === 'todas' ? 'bg-[#1b4332] text-[#4ade80]' : 'text-gray-400 hover:text-white'}`}
+                >
+                  Todas ({notifications.length})
+                </button>
+                <button
+                  onClick={() => setNotifFilter('alertas')}
+                  className={`flex-1 py-1.5 rounded-[6px] font-medium transition-colors cursor-pointer ${notifFilter === 'alertas' ? 'bg-[#1b4332] text-[#4ade80]' : 'text-gray-400 hover:text-white'}`}
+                >
+                  Alertas ({notifications.filter(n => n.type === 'alert').length})
+                </button>
+                <button
+                  onClick={() => setNotifFilter('ventas')}
+                  className={`flex-1 py-1.5 rounded-[6px] font-medium transition-colors cursor-pointer ${notifFilter === 'ventas' ? 'bg-[#1b4332] text-[#4ade80]' : 'text-gray-400 hover:text-white'}`}
+                >
+                  Ventas ({notifications.filter(n => n.type === 'sale').length})
+                </button>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto divide-y divide-white/5 scrollbar-thin">
+                {!portalEnabled ? (
+                  <div className="p-6 text-center text-gray-400 text-[13px]">
+                    <p>🔕 Notificaciones del portal desactivadas.</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Puedes activarlas en Ajustes del Sistema.</p>
                   </div>
-                )) : (
-                  <div className="p-6 text-center text-gray-500 text-[13px]">No hay notificaciones recientes</div>
+                ) : filteredNotifs.length > 0 ? (
+                  filteredNotifs.map(n => {
+                    const isRead = readNotifs.includes(n.id);
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          markAsRead(n.id);
+                          setShowNotif(false);
+                          if (n.link) navigate(n.link);
+                        }}
+                        className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer ${isRead ? 'bg-transparent opacity-60 hover:opacity-100 hover:bg-white/5' : 'bg-[#1b4332]/20 hover:bg-[#1b4332]/30'}`}
+                      >
+                        <div className="shrink-0 mt-0.5">
+                          {n.severity === 'critical' && (
+                            <span className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-[14px]">🚫</span>
+                          )}
+                          {n.severity === 'warning' && (
+                            <span className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[14px]">⚠️</span>
+                          )}
+                          {n.severity === 'info' && (
+                            <span className="w-8 h-8 rounded-full bg-[#30b466]/20 text-[#4ade80] flex items-center justify-center text-[14px]">🛍️</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[13px] truncate ${isRead ? 'text-gray-300 font-normal' : 'text-white font-semibold'}`}>
+                              {n.title}
+                            </p>
+                            {!isRead && <span className="w-2 h-2 rounded-full bg-[#30b466] shrink-0"></span>}
+                          </div>
+                          <p className="text-gray-400 text-[12px] mt-0.5 line-clamp-2">{n.message}</p>
+                          <p className="text-gray-500 text-[10px] mt-1">{n.time}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center text-gray-500 text-[13px]">
+                    No hay notificaciones en esta sección
+                  </div>
                 )}
               </div>
             </div>
           )}
         </div>
+
+        {/* Perfil */}
         <div className="relative">
           <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }} className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1 sm:pr-3 rounded-full transition-colors">
             <div className="w-8 h-8 bg-[#1b4332] text-[#4ade80] rounded-full flex items-center justify-center text-[13px] font-bold shrink-0">

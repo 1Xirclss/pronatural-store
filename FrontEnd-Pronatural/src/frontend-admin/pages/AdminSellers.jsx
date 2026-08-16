@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { toast } from 'react-hot-toast';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { isValidPhoneNumber, formatElSalvadorPhone } from '../../utils/phoneFormatter';
+import PhoneInputField from '../../components/common/PhoneInputField';
 
 export default function AdminSellers() {
   const { users, addUser, updateUser, deleteUser } = useGlobalData();
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm({
     defaultValues: {
       name: '',
       lastName: '',
       email: '',
-      phone: '',
+      phone: '+503 ',
       role: 'Vendedor',
       password: '',
-      salary: ''
+      salary: '',
+      birthdate: ''
     }
   });
 
@@ -35,7 +38,7 @@ export default function AdminSellers() {
   };
 
   const resetForm = () => {
-    reset({ name: '', lastName: '', email: '', phone: '', role: 'Vendedor', password: '', salary: '' });
+    reset({ name: '', lastName: '', email: '', phone: '+503 ', role: 'Vendedor', password: '', salary: '', birthdate: '' });
     setIsEditing(false);
     setEditingId(null);
   };
@@ -44,10 +47,11 @@ export default function AdminSellers() {
     setValue('name', user.name);
     setValue('lastName', user.lastName);
     setValue('email', user.email);
-    setValue('phone', user.phone);
+    setValue('phone', formatElSalvadorPhone(user.phone));
     setValue('role', user.role);
     setValue('password', user.password);
     setValue('salary', user.salary);
+    setValue('birthdate', user.birthdate ? user.birthdate.split('T')[0] : '');
     setEditingId(user.id);
     setIsEditing(true);
   };
@@ -120,14 +124,23 @@ export default function AdminSellers() {
 
             <div>
               <label className="text-gray-400 text-xs uppercase tracking-wider mb-1.5 block">Teléfono</label>
-              <input
-                type="text"
-                {...register("phone")}
-                placeholder="+52 555 123 4567"
-                className="w-full bg-[#0d1114] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#4ade80] transition-colors"
+              <Controller
+                name="phone"
+                control={control}
+                rules={{
+                  validate: (val) => !val || val === '+503 ' || isValidPhoneNumber(val) || "El teléfono debe tener 8 dígitos (ej: +503 7000-0000)"
+                }}
+                render={({ field }) => (
+                  <PhoneInputField
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    error={errors.phone?.message}
+                    darkTheme={true}
+                  />
+                )}
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-gray-400 text-xs uppercase tracking-wider mb-1.5 block">Rol / Cargo</label>
                 <select
@@ -147,6 +160,14 @@ export default function AdminSellers() {
                   className="w-full bg-[#0d1114] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#4ade80] transition-colors"
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs uppercase tracking-wider mb-1.5 block">Fecha de Nacimiento</label>
+              <input
+                type="date"
+                {...register("birthdate")}
+                className="w-full bg-[#0d1114] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#4ade80] transition-colors"
+              />
             </div>
             <div className="pt-4 flex gap-3">
               <button
@@ -173,31 +194,31 @@ export default function AdminSellers() {
             <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Nombre</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Contacto</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Rol</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Salario</th>
-                  <th className="pb-3 text-[11px] uppercase tracking-wider text-gray-500 font-medium text-right">Acciones</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Nombre</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Contacto</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Rol</th>
+                  <th className="pb-3 pr-4 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium">Salario</th>
+                  <th className="pb-3 whitespace-nowrap text-[11px] uppercase tracking-wider text-gray-500 font-medium text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {users && users.length > 0 ? (
                   users.map(u => (
                     <tr key={u.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="py-4 text-[13px] text-white font-medium">{u.name} {u.lastName}</td>
-                      <td className="py-4 text-[13px] text-gray-400">
+                      <td className="py-4 pr-4 whitespace-nowrap text-[13px] text-white font-medium">{u.name} {u.lastName}</td>
+                      <td className="py-4 pr-4 whitespace-nowrap text-[13px] text-gray-400">
                         <div>{u.email}</div>
                         <div className="text-[11px] text-gray-500">{u.phone}</div>
                       </td>
-                      <td className="py-4">
+                      <td className="py-4 pr-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 rounded-[4px] bg-white/5 text-gray-300 text-[11px] font-semibold">
                           {u.role}
                         </span>
                       </td>
-                      <td className="py-4 text-[13px] text-[#4ade80] font-bold">
+                      <td className="py-4 pr-4 whitespace-nowrap text-[13px] text-[#4ade80] font-bold">
                         ${u.salary}
                       </td>
-                      <td className="py-4 text-right">
+                      <td className="py-4 whitespace-nowrap text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleEdit(u)}
