@@ -5,9 +5,11 @@ import { useAuth } from '../../../hooks/useAuth';
 import AuthLayout from '../../../components/layout/AuthLayout';
 import toast from 'react-hot-toast';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { motion, useReducedMotion } from 'framer-motion';
 export default function Login() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
   const { login, isAuthenticated, user } = useAuth();
+  const shouldReduceMotion = useReducedMotion();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,32 +34,47 @@ export default function Login() {
     }
   };
   const leftPanel = (
-    <>
-      <img 
-        src="https://images.unsplash.com/photo-1559525839-b184a4d698c7?q=80&w=1000&auto=format&fit=crop" 
-        alt="Coffee Beans" 
-        className="absolute inset-0 w-full h-full object-cover opacity-90"
+    <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#082214] p-7 sm:p-10 lg:p-12 xl:p-14">
+      <motion.img
+        src="/images/registro-botanico.png"
+        alt=""
+        aria-hidden="true"
+        animate={shouldReduceMotion ? undefined : { scale: [1, 1.045, 1] }}
+        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute inset-0 h-full w-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/40"></div>
-      <div className="absolute top-12 left-12 z-10">
-        <h1 className="text-white text-[22px] font-bold tracking-tighter">PRONATURAL</h1>
-      </div>
-      <div className="absolute bottom-12 left-12 z-10 max-w-sm">
-        <p className="text-[#4ade80] text-[10px] font-bold tracking-[0.2em] uppercase mb-1">Bienvenido de nuevo</p>
-        <p className="text-white text-[13px] font-medium leading-relaxed opacity-90">Ingresa a tu cuenta para gestionar tus compras y preferencias.</p>
-      </div>
-    </>
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-[#06170e]/65 via-[#06170e]/15 to-[#06170e]/85" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#06170e]/55 via-transparent to-[#06170e]/10" />
+      <motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { opacity: [0.15, 0.28, 0.15] }} transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }} className="pointer-events-none absolute -left-36 -top-36 h-[480px] w-[480px] rounded-full bg-[#30b466]/25 blur-[100px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-24 h-[420px] w-[420px] rounded-full border border-white/15" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-12 h-[300px] w-[300px] rounded-full border border-white/10" />
+
+      <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="relative z-10 flex items-center justify-between">
+        <h1 className="text-[22px] font-bold tracking-tighter text-white drop-shadow-md">PRONATURAL</h1>
+        <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#a5f3c4] backdrop-blur-md">Bienestar natural</span>
+      </motion.div>
+
+      <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: shouldReduceMotion ? 0 : 0.08 }} className="relative z-10 mt-auto max-w-lg pb-8 pt-20 lg:pb-12">
+        <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-[#83e6a8]">Tu espacio ProNatural</p>
+        <h2 className="max-w-md text-4xl font-bold leading-[1.04] tracking-tight text-white drop-shadow-lg lg:text-5xl">Qué bueno tenerte de vuelta.</h2>
+        <p className="mt-4 max-w-sm text-sm leading-6 text-white/85 drop-shadow-md">Ingresa a tu cuenta para revisar tus compras, pedidos y preferencias.</p>
+        <div className="mt-7 inline-flex items-center gap-3 rounded-full border border-white/20 bg-black/20 px-4 py-2.5 text-xs font-medium text-white/90 backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-[#83e6a8] shadow-[0_0_14px_rgba(131,230,168,0.75)]" />
+          Cuidando tu salud naturalmente
+        </div>
+      </motion.div>
+    </div>
   );
   return (
     <AuthLayout leftPanel={leftPanel}>
-      <div className="mb-10">
+      <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38 }} className="mb-10">
         <p className="text-[10px] font-bold text-[#30b466] tracking-widest uppercase mb-2">Acceso a Clientes</p>
         <h2 className="text-[36px] font-bold leading-none tracking-tighter text-brand-dark mb-3">INICIAR SESIÓN</h2>
         <p className="text-[12px] text-gray-500 font-medium leading-relaxed max-w-sm">
           Introduce tus datos para acceder a tu perfil personal en ProNatural.
         </p>
-      </div>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      </motion.div>
+      <motion.form initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: shouldReduceMotion ? 0 : 0.06 }} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <label className="block text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase mb-2">Correo Electrónico</label>
           <input
@@ -111,7 +128,7 @@ export default function Login() {
             Crear cuenta
           </Link>
         </div>
-      </form>
+      </motion.form>
       <div className="mt-12 pt-4 border-t border-gray-100">
         <p className="text-[10px] text-gray-400">
           © ProNatural Store. Pasión por la naturaleza.

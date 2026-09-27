@@ -255,7 +255,8 @@ export default function Checkout() {
               placeholder="JANE DOE"
               {...register('name', {
                 required: 'El nombre completo es requerido',
-                minLength: { value: 3, message: 'El nombre debe contener al menos 3 caracteres' }
+                minLength: { value: 3, message: 'El nombre debe contener al menos 3 caracteres' },
+                validate: value => value.trim().length >= 3 || 'Ingresa un nombre válido'
               })}
               className={`w-full border-b py-2 text-[12px] bg-transparent focus:outline-none focus:border-brand-dark uppercase transition-colors ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
             />
@@ -289,7 +290,8 @@ export default function Checkout() {
               placeholder="DIRECCIÓN DE LA CALLE"
               {...register('address', {
                 required: 'La dirección de entrega es requerida',
-                minLength: { value: 5, message: 'Ingresa una dirección detallada (mínimo 5 caracteres)' }
+                minLength: { value: 5, message: 'Ingresa una dirección detallada (mínimo 5 caracteres)' },
+                validate: value => value.trim().length >= 5 || 'Ingresa una dirección válida'
               })}
               className={`w-full border-b py-2 text-[12px] bg-transparent focus:outline-none focus:border-brand-dark uppercase transition-colors ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
             />
@@ -304,7 +306,8 @@ export default function Checkout() {
               placeholder="SAN SALVADOR"
               {...register('city', {
                 required: 'La ciudad o departamento es requerido',
-                minLength: { value: 3, message: 'Ingresa al menos 3 caracteres' }
+                minLength: { value: 3, message: 'Ingresa al menos 3 caracteres' },
+                validate: value => value.trim().length >= 3 || 'Ingresa una ciudad válida'
               })}
               className={`w-full border-b py-2 text-[12px] bg-transparent focus:outline-none focus:border-brand-dark uppercase transition-colors ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
             />

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useCart } from '../../hooks/useCart';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { getCloudinaryUrl } from '../../utils/cloudinary';
@@ -7,206 +8,156 @@ export default function Cart() {
   const { items, removeItem, updateQuantity, clearCart, subtotal } = useCart();
   const { config } = useGlobalData();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
 
   const deliveryFee = config?.deliveryFee ?? 3.50;
   const taxRate = config?.taxRate ?? 0;
-
   const shipping = items.length > 0 ? deliveryFee : 0;
   const taxes = (subtotal * taxRate) / 100;
   const total = subtotal + shipping + taxes;
+
   return (
     <div className="min-h-[calc(100vh-80px)] bg-[#fdfaf6]">
-      <div className="border-b border-gray-100 px-5 md:px-12 lg:px-24 py-8 md:py-16">
-        <h1 className="text-4xl md:text-[64px] font-bold tracking-tighter text-[#0b2216] leading-none">
-          CARRITO
-        </h1>
-        <p className="text-[11px] font-bold text-gray-400 tracking-[0.2em] uppercase mt-3">
-          {items.length} {items.length === 1 ? 'ARTÍCULO' : 'ARTÍCULOS'} DE EL CATALOGO EN EL CARRITO
+      <header className="border-b border-[#e9e7df] bg-[radial-gradient(ellipse_at_top_right,_rgba(48,180,102,0.08),_transparent_40%)] px-5 py-9 sm:px-8 md:px-12 md:py-12 lg:px-24">
+        <p className="mb-4 text-[10px] font-bold tracking-[0.2em] text-[#7d8a80] uppercase">
+          <Link to="/catalogo" className="transition-colors hover:text-orange-700">Cat&aacute;logo</Link>
+          <span className="mx-2 text-[#b45309]">/</span>Tu selecci&oacute;n
         </p>
-      </div>
-      <div className="flex flex-col lg:flex-row min-h-[500px]">
-        <div className="flex-1 px-5 md:px-12 lg:px-24 py-8 md:py-16">
-          {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 text-center">
-              <div className="w-20 h-20 border border-gray-200 rounded-full flex items-center justify-center mb-10">
-                <svg className="w-9 h-9 text-gray-300" fill="none" stroke="currentColor" strokeWidth="1.2" viewBox="0 0 24 24">
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <path d="M16 10a4 4 0 0 1-8 0"></path>
-                </svg>
-              </div>
-              <p className="text-[11px] font-bold text-gray-400 tracking-[0.2em] uppercase mb-8">
-                EL CARRITO ESTÁ VACÍO
-              </p>
-              <p className="text-[13px] text-gray-400 mb-12 max-w-xs leading-relaxed">
-                Aún no has añadido ningún producto a tu selección.
-              </p>
-              <Link
-                to="/catalogo"
-                className="bg-[#0a2016] text-white text-[10px] font-bold tracking-[0.2em] uppercase px-12 py-4 hover:bg-[#123827] transition-colors"
-              >
-                Explorar el catálogo
-              </Link>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-4xl leading-none font-bold tracking-[-0.055em] text-[#0b2216] md:text-[60px]">Tu carrito</h1>
+            <p className="mt-3 text-[10px] font-bold tracking-[0.17em] text-gray-400 uppercase">
+              {items.length} {items.length === 1 ? 'producto' : 'productos'} listos para acompa&ntilde;arte
+            </p>
+          </div>
+          {items.length > 0 && (
+            <motion.p key={subtotal} initial={shouldReduceMotion ? false : { opacity: 0.5, y: 4 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-slate-500">
+              Subtotal <span className="ml-2 font-semibold text-[#0b2216]">${subtotal.toFixed(2)}</span>
+            </motion.p>
+          )}
+        </div>
+      </header>
+
+      {items.length === 0 ? (
+        <motion.section
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.35 }}
+          className="flex min-h-[440px] flex-col items-center justify-center px-5 py-20 text-center"
+        >
+          <div className="mb-7 grid h-20 w-20 place-items-center rounded-full border border-[#dce5dc] bg-white text-[#0b2216] shadow-sm" aria-hidden="true">
+            <svg className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
+          <p className="text-[11px] font-bold tracking-[0.2em] text-[#0b2216] uppercase">Tu carrito est&aacute; vac&iacute;o</p>
+          <p className="mt-3 mb-8 max-w-sm text-sm leading-6 text-slate-500">Explora el cat&aacute;logo y guarda aqu&iacute; los productos que quieras llevar.</p>
+          <Link to="/catalogo" className="inline-flex min-h-12 items-center bg-[#0a2016] px-8 text-[10px] font-bold tracking-[0.16em] text-white uppercase transition-colors hover:bg-[#123827] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0a2016]">
+            Explorar el cat&aacute;logo
+          </Link>
+        </motion.section>
+      ) : (
+        <main className="grid items-start lg:grid-cols-[minmax(0,1fr)_390px]">
+          <section aria-label="Productos en el carrito" className="px-5 py-7 sm:px-8 md:px-12 md:py-10 lg:px-16 xl:px-24">
+            <div className="mb-5 flex items-center justify-between border-b border-[#e5e6df] pb-3">
+              <h2 className="text-[10px] font-bold tracking-[0.18em] text-[#78847b] uppercase">Tus productos</h2>
+              <span className="text-[10px] text-slate-400">{items.length} {items.length === 1 ? 'art&iacute;culo' : 'art&iacute;culos'}</span>
             </div>
-          ) : (
-            <>
-              <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto] gap-8 pb-6 border-b border-gray-200 mb-8">
-                <span className="text-[9px] font-bold text-gray-400 tracking-[0.2em] uppercase">Producto</span>
-                <span className="text-[9px] font-bold text-gray-400 tracking-[0.2em] uppercase w-28 text-center">Cantidad</span>
-                <span className="text-[9px] font-bold text-gray-400 tracking-[0.2em] uppercase w-24 text-right">Precio</span>
-                <span className="text-[9px] font-bold text-gray-400 tracking-[0.2em] uppercase w-8"></span>
-              </div>
-              <div className="space-y-8">
+
+            <div className="space-y-4">
+              <AnimatePresence initial={false}>
                 {items.map((item) => (
-                  <div
+                  <motion.article
                     key={item.id}
-                    className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-6 md:gap-8 pb-8 border-b border-gray-100 items-center"
+                    layout
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={shouldReduceMotion ? undefined : { opacity: 0, x: -14, height: 0, marginBottom: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.24, ease: 'easeOut' }}
+                    className="flex flex-col gap-4 rounded-xl border border-[#e8e8e1] bg-white p-4 shadow-[0_10px_28px_-26px_rgba(11,34,22,0.5)] sm:flex-row sm:items-center sm:gap-5 sm:p-5"
                   >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 md:gap-10">
-                      <div className="w-24 h-24 sm:w-[120px] sm:h-[120px] bg-gray-100 flex-shrink-0 overflow-hidden">
+                    <Link to={`/producto/${item.id}`} className="group flex min-w-0 flex-1 items-center gap-4 sm:gap-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b2216]">
+                      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-[#f0f0e9] sm:h-28 sm:w-28">
                         {item.image && (
-                          <img
+                          <motion.img
                             src={getCloudinaryUrl(item.image)}
-                            alt={item.name || item.title}
-                            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
+                            alt={item.name || item.title || ''}
+                            whileHover={shouldReduceMotion ? undefined : { scale: 1.045 }}
+                            transition={{ duration: 0.35, ease: 'easeOut' }}
+                            className="h-full w-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0 motion-reduce:transition-none"
                           />
                         )}
                       </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-orange-700 tracking-[0.15em] uppercase mb-2">
-                          {item.batchRef || 'LOTE SELECCIONADO'}
-                        </p>
-                        <h3 className="text-[17px] font-bold tracking-tighter text-brand-dark leading-tight">
-                          {(item.name || item.title || '').replace('\n', ' ')}
-                        </h3>
-                        <p className="text-[11px] font-bold text-brand-dark mt-1">
-                          ${(item.price || 0).toFixed(2)} c/u
-                        </p>
+                      <div className="min-w-0">
+                        <p className="mb-2 text-[9px] font-bold tracking-[0.15em] text-orange-700 uppercase">{item.batchRef || 'Lote seleccionado'}</p>
+                        <h3 className="line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-brand-dark transition-colors group-hover:text-[#25613e]">{(item.name || item.title || '').replace('\n', ' ')}</h3>
+                        <p className="mt-2 text-[11px] text-slate-500">${(Number(item.price) || 0).toFixed(2)} <span className="text-slate-400">por unidad</span></p>
                       </div>
+                    </Link>
+
+                    <div className="flex items-center justify-between gap-5 border-t border-[#f0f0eb] pt-3 sm:border-0 sm:pt-0">
+                      <div className="flex items-center rounded-full border border-[#dce2da] bg-[#f8f8f4]" aria-label="Cantidad">
+                        <motion.button type="button" whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }} onClick={() => updateQuantity(item.id, item.quantity - 1)} aria-label={`Disminuir cantidad de ${item.name || item.title}`} className="grid h-10 w-10 place-items-center rounded-full text-lg text-brand-dark transition-colors hover:bg-[#e7ede5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0b2216]">&minus;</motion.button>
+                        <motion.span key={item.quantity} initial={shouldReduceMotion ? false : { opacity: 0.5, y: 3 }} animate={{ opacity: 1, y: 0 }} className="w-8 text-center text-[12px] font-bold text-brand-dark">{item.quantity}</motion.span>
+                        <motion.button type="button" whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }} onClick={() => updateQuantity(item.id, item.quantity + 1)} aria-label={`Aumentar cantidad de ${item.name || item.title}`} className="grid h-10 w-10 place-items-center rounded-full text-lg text-brand-dark transition-colors hover:bg-[#e7ede5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0b2216]">+</motion.button>
+                      </div>
+                      <motion.p key={`${item.quantity}-${item.price}`} initial={shouldReduceMotion ? false : { opacity: 0.55, y: 3 }} animate={{ opacity: 1, y: 0 }} className="min-w-20 text-right text-[15px] font-bold text-brand-dark">${((Number(item.price) || 0) * item.quantity).toFixed(2)}</motion.p>
+                      <motion.button type="button" whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }} whileTap={shouldReduceMotion ? undefined : { scale: 0.9 }} onClick={() => removeItem(item.id)} className="grid h-10 w-10 place-items-center rounded-full text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600" aria-label={`Eliminar ${item.name || item.title} del carrito`}>
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                      </motion.button>
                     </div>
-                    <div className="flex items-center border border-gray-200 w-28 justify-center">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="w-9 h-9 flex items-center justify-center text-brand-dark hover:bg-brand-dark hover:text-white transition-colors text-lg font-light cursor-pointer"
-                      >
-                        −
-                      </button>
-                      <span className="w-10 text-center text-[12px] font-bold text-brand-dark">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-9 h-9 flex items-center justify-center text-brand-dark hover:bg-brand-dark hover:text-white transition-colors text-lg font-light cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <div className="w-24 text-right">
-                      <span className="text-[15px] font-bold text-brand-dark">
-                        ${((item.price || 0) * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 transition-colors cursor-pointer"
-                      aria-label="Eliminar producto"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M18 6L6 18M6 6l12 12"></path>
-                      </svg>
-                    </button>
-                  </div>
+                  </motion.article>
                 ))}
-              </div>
-              <div className="mt-12">
-                <button
-                  onClick={clearCart}
-                  className="text-[9px] font-bold tracking-[0.2em] text-gray-400 hover:text-red-500 uppercase transition-colors flex items-center gap-3 cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6l-1 14H6L5 6"></path>
-                    <path d="M10 11v6M14 11v6"></path>
-                    <path d="M9 6V4h6v2"></path>
-                  </svg>
-                  VACIAR CARRITO
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-        {items.length > 0 && (
-          <div className="w-full lg:w-[420px] bg-[#f4f3ec] px-6 md:px-12 py-12 md:py-16 border-t lg:border-t-0 lg:border-l border-gray-100">
-            <div className="flex items-center gap-4 mb-12">
-              <span className="bg-[#b45309] text-white text-[10px] px-3 py-1 font-bold">01</span>
-              <h2 className="text-[13px] font-bold tracking-[0.2em] text-brand-dark uppercase">
-                Resumen del pedido
-              </h2>
+              </AnimatePresence>
             </div>
-            <div className="space-y-6 mb-12">
-              {items.map((item) => (
-                <div key={item.id} className="flex justify-between items-start">
-                  <div>
-                    <p className="text-[11px] font-bold text-brand-dark uppercase tracking-wide leading-tight">
-                      {(item.name || item.title || '').replace('\n', ' ')}
-                    </p>
-                    <p className="text-[9px] text-gray-400 mt-1">× {item.quantity}</p>
-                  </div>
-                  <span className="text-[12px] font-bold text-brand-dark">
-                    ${((item.price || 0) * item.quantity).toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-gray-200 pt-8 space-y-5 mb-12">
-              <div className="flex justify-between">
-                <span className="text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase">SUBTOTAL</span>
-                <span className="text-[13px] font-medium text-brand-dark">${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase">ENVÍO (EXPRESS)</span>
-                <span className="text-[13px] font-medium text-brand-dark">${shipping.toFixed(2)}</span>
+
+            <button type="button" onClick={clearCart} className="mt-7 inline-flex min-h-10 items-center gap-2 text-[9px] font-bold tracking-[0.17em] text-slate-400 uppercase transition-colors hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0b2216]">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v6m4-6v6"/></svg>
+              Vaciar carrito
+            </button>
+          </section>
+
+          <aside aria-labelledby="cart-summary-title" className="border-t border-[#e4e3d9] bg-[#f4f3ec] px-5 py-8 sm:px-8 md:px-12 lg:sticky lg:top-24 lg:min-h-[calc(100vh-80px)] lg:border-t-0 lg:border-l lg:px-10 lg:py-10">
+            <div className="mb-8 flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[#0b2216] text-xs font-bold text-white">{items.length}</span>
+              <div>
+                <h2 id="cart-summary-title" className="text-sm font-bold tracking-[0.12em] text-brand-dark uppercase">Resumen del pedido</h2>
+                <p className="mt-1 text-xs text-slate-600">Revisa el total antes de continuar</p>
               </div>
             </div>
-            <div className="border-t border-gray-200 pt-8 mb-12">
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-[11px] font-bold tracking-[0.2em] text-brand-dark uppercase mb-1">TOTAL</p>
-                  <p className="text-[8px] text-gray-400 tracking-widest uppercase">+IVA</p>
-                </div>
-                <span className="text-[36px] font-bold text-brand-dark leading-none tracking-tighter">
-                  ${total.toFixed(2)}
-                </span>
-              </div>
+
+            <div className="mb-7 max-h-48 space-y-4 overflow-y-auto pr-1">
+              <AnimatePresence initial={false}>
+                {items.map((item) => (
+                  <motion.div key={item.id} layout initial={shouldReduceMotion ? false : { opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={shouldReduceMotion ? undefined : { opacity: 0, x: -8 }} className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 text-xs font-semibold leading-5 text-brand-dark">{(item.name || item.title || '').replace('\n', ' ')}</p>
+                      <p className="mt-1 text-xs text-slate-600">Cantidad: {item.quantity}</p>
+                    </div>
+                    <motion.span key={`${item.id}-${item.quantity}`} initial={shouldReduceMotion ? false : { opacity: 0.5 }} animate={{ opacity: 1 }} className="shrink-0 text-sm font-semibold text-brand-dark">${((Number(item.price) || 0) * item.quantity).toFixed(2)}</motion.span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
-            <div className="space-y-4 mb-8">
-              <button
-                onClick={() => navigate('/pago')}
-                className="w-full bg-[#0a2016] text-white flex justify-between items-center px-8 py-5 hover:bg-[#123827] transition-colors group cursor-pointer"
-              >
-                <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Proceder al pago</span>
-                <svg className="w-4 h-4 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path>
-                </svg>
-              </button>
+
+            <div className="space-y-4 border-t border-[#dcded5] py-6">
+              <div className="flex justify-between text-xs font-bold tracking-[0.1em] text-slate-600 uppercase"><span>Subtotal</span><motion.span key={subtotal} initial={shouldReduceMotion ? false : { opacity: 0.5 }} animate={{ opacity: 1 }} className="text-sm font-medium tracking-normal text-brand-dark">${subtotal.toFixed(2)}</motion.span></div>
+              <div className="flex justify-between text-xs font-bold tracking-[0.1em] text-slate-600 uppercase"><span>Env&iacute;o</span><span className="text-sm font-medium tracking-normal text-brand-dark">${shipping.toFixed(2)}</span></div>
+              {taxes > 0 && <div className="flex justify-between text-xs font-bold tracking-[0.1em] text-slate-600 uppercase"><span>Impuestos</span><span className="text-sm font-medium tracking-normal text-brand-dark">${taxes.toFixed(2)}</span></div>}
             </div>
-            <Link
-              to="/catalogo"
-              className="w-full flex justify-center text-[9px] font-bold tracking-[0.2em] text-gray-400 hover:text-brand-dark uppercase transition-colors"
-            >
-              ← Seguir comprando
-            </Link>
-            <div className="flex justify-center items-center mt-12 opacity-50">
-              <svg className="w-3.5 h-3.5 text-gray-500 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              <span className="text-[7.5px] font-bold text-gray-500 tracking-[0.2em] uppercase">
-                AES-256 BIT ENCRYPTION ACTIVE
-              </span>
+
+            <div className="mb-7 flex items-end justify-between border-t border-[#dcded5] pt-6">
+              <div className="min-w-0 pr-2"><p className="text-xs font-bold tracking-[0.14em] text-brand-dark uppercase">Total</p><p className="mt-1 text-xs leading-5 text-slate-600">Pago y entrega se coordinan por WhatsApp</p></div>
+              <motion.span key={total} initial={shouldReduceMotion ? false : { opacity: 0.5, y: 4 }} animate={{ opacity: 1, y: 0 }} className="shrink-0 text-3xl font-bold leading-none tracking-[-0.05em] text-brand-dark sm:text-[2.1rem]">${total.toFixed(2)}</motion.span>
             </div>
-          </div>
-        )}
-      </div>
+
+            <motion.button type="button" whileHover={shouldReduceMotion ? undefined : { y: -2 }} whileTap={shouldReduceMotion ? undefined : { scale: 0.99 }} onClick={() => navigate('/pago')} className="group flex min-h-14 w-full items-center justify-between bg-[#0a2016] px-5 text-xs font-bold tracking-[0.14em] text-white uppercase shadow-md transition-colors hover:bg-[#123827] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0a2016]">
+              <span>Proceder al pago</span><svg className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+            </motion.button>
+            <Link to="/catalogo" className="mt-5 inline-flex min-h-10 w-full items-center justify-center text-[11px] font-bold tracking-[0.14em] text-slate-600 uppercase transition-colors hover:text-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0b2216]">&larr; Seguir comprando</Link>
+          </aside>
+        </main>
+      )}
     </div>
   );
 }

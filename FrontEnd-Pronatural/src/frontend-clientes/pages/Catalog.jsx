@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import ProductCard from '../../components/catalog/ProductCard';
 import ProductSkeleton from '../../components/catalog/ProductSkeleton';
+import SlideTabs from '../../components/ui/SlideTabs';
 import { useState } from 'react';
 
 export default function Catalog() {
@@ -114,36 +115,28 @@ export default function Catalog() {
           <span className="text-[9px] font-bold tracking-widest text-gray-400 uppercase mr-1 shrink-0 hidden sm:inline-block">
             Categorías:
           </span>
-          {categoryList.map((cat) => {
-            const isSelected = normalize(selectedCategory) === normalize(cat);
-            return (
-              <button
-                key={cat}
-                onClick={() => handleCategorySelect(cat)}
-                className={`px-4 py-2 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-200 shrink-0 whitespace-nowrap cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#0a2016] text-white shadow-md shadow-[#0a2016]/20'
-                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-brand-dark border border-gray-200/80'
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
+          <SlideTabs
+            items={categoryList}
+            selected={categoryList.find((category) => normalize(category) === normalize(selectedCategory)) || selectedCategory}
+            onSelect={handleCategorySelect}
+            ariaLabel="Filtrar por categoría"
+          />
         </div>
 
         {/* Búsqueda y Ordenar perfectamente alineados */}
         <div className="flex items-center gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-gray-200/80">
           {/* Buscador */}
           <div className="relative min-w-[160px] sm:min-w-[210px] flex-1">
+            <label htmlFor="catalog-search" className="sr-only">Buscar productos</label>
             <input
+              id="catalog-search"
               type="text"
               placeholder="Buscar productos..."
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full bg-white border border-gray-200/80 rounded-full py-2 px-4 text-[11px] font-medium text-brand-dark focus:outline-none focus:border-[#123827] shadow-sm pr-8"
+              className="min-h-11 w-full bg-white border border-gray-200/80 rounded-full py-2 px-4 text-[11px] font-medium text-brand-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-[#123827] shadow-sm pr-8"
             />
-            <svg className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg aria-hidden="true" className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
           </div>
@@ -152,9 +145,10 @@ export default function Catalog() {
           <div className="flex items-center gap-2 bg-white border border-gray-200/80 rounded-full py-2 px-3.5 shadow-sm shrink-0">
             <span className="text-[9px] font-bold tracking-wider text-gray-400 uppercase hidden sm:inline-block">ORDENAR:</span>
             <select
+              aria-label="Ordenar productos"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-[10px] font-bold tracking-wider text-brand-dark uppercase focus:outline-none cursor-pointer"
+              className="min-h-11 bg-transparent text-[10px] font-bold tracking-wider text-brand-dark uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-[#123827] cursor-pointer"
             >
               <option value="popular">POPULARES</option>
               <option value="price-low">MENOR PRECIO</option>
@@ -195,8 +189,8 @@ export default function Catalog() {
             <span>Mostrando {products.length} {products.length === 1 ? 'producto' : 'productos'}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-10 gap-y-12 md:gap-y-16">
-            {products.map(product => (
-              <ProductCard key={product.id} {...product} />
+              {products.map((product, index) => (
+                <ProductCard key={product.id} {...product} index={index % 4} />
             ))}
           </div>
         </>

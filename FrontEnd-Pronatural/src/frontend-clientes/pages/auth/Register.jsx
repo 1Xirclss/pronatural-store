@@ -8,10 +8,12 @@ import toast from 'react-hot-toast';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { isValidPhoneNumber } from '../../../utils/phoneFormatter';
 import PhoneInputField from '../../../components/common/PhoneInputField';
+import { motion, useReducedMotion } from 'framer-motion';
 
 export default function Register() {
   const { register, handleSubmit, watch, control, formState: { errors, isSubmitting } } = useForm();
   const { registerCustomer } = useAuth();
+  const shouldReduceMotion = useReducedMotion();
   const navigate = useNavigate();
   const password = watch('password');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,39 +51,35 @@ export default function Register() {
   };
 
   const leftPanel = (
-    <div className="absolute inset-0 bg-[#082214] flex flex-col justify-between p-10 lg:p-14 overflow-hidden select-none">
-      {/* Esferas de luz animadas sutiles en el fondo */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#30b466]/15 rounded-full blur-[100px] animate-pulse"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#1b4332]/30 rounded-full blur-[120px] animate-pulse duration-1000"></div>
+    <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#082214] p-7 sm:p-10 lg:p-12 xl:p-14">
+      <img src="/images/registro-botanico.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-[#06170e]/70 via-[#06170e]/20 to-[#06170e]/85" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#06170e]/65 via-transparent to-[#06170e]/10" />
+      <motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { opacity: [0.18, 0.3, 0.18] }} transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#30b466]/25 blur-[100px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -right-24 h-[440px] w-[440px] rounded-full border border-white/[0.16]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 -right-10 h-[320px] w-[320px] rounded-full border border-white/[0.12]" />
 
-      {/* Header Logo */}
-      <div className="relative z-10">
-        <h1 className="text-white text-[22px] font-bold tracking-tighter">PRONATURAL</h1>
+      <div className="relative z-10 flex items-center justify-between">
+        <h1 className="text-[22px] font-bold tracking-tighter text-white drop-shadow-md">PRONATURAL</h1>
+        <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#a5f3c4] backdrop-blur-md">Origen natural</span>
       </div>
 
-      {/* Hero content elegante y limpio */}
-      <div className="relative z-10 max-w-lg my-auto">
-        <span className="inline-block text-[#4ade80] text-[10px] font-bold tracking-[0.25em] uppercase mb-4">
-          Salud y Bienestar Orgánico
-        </span>
+      <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="relative z-10 mt-auto max-w-xl pb-8 pt-20 lg:pb-12">
+        <span className="mb-4 inline-block text-[10px] font-bold uppercase tracking-[0.22em] text-[#83e6a8]">Salud y bienestar</span>
+        <h2 className="max-w-lg text-4xl font-bold leading-[1.04] tracking-tight text-white drop-shadow-lg lg:text-5xl">Naturalmente cerca de ti.</h2>
+        <p className="mt-4 max-w-md text-sm leading-6 text-white/85 drop-shadow-md">Crea tu cuenta para descubrir productos seleccionados y consultar tus pedidos en un solo lugar.</p>
+        <div className="mt-7 flex items-center gap-3 text-xs font-semibold text-white/90">
+          <span className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/20 text-[#a5f3c4] backdrop-blur-md" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.8"><path d="M12 21s-7-4.4-7-11a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 6.6-7 11-7 11Z" strokeLinejoin="round"/><path d="M9 12h6m-3-3v6" strokeLinecap="round"/></svg></span>
+          <span>Ingredientes naturales seleccionados</span>
+        </div>
+      </motion.div>
 
-        <h2 className="text-white text-[38px] lg:text-[44px] font-bold leading-[1.08] tracking-tighter mb-4">
-          Descubre el poder de lo <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4ade80] to-[#30b466]">100% Natural</span>
-        </h2>
-
-        <p className="text-gray-300 text-[14px] leading-relaxed opacity-90 max-w-md">
-          Únete a nuestra comunidad para acceder a productos orgánicos seleccionados, seguimiento de pedidos y beneficios exclusivos.
-        </p>
-      </div>
-
-      {/* Footer copyright */}
-      <div className="relative z-10 flex items-center justify-between text-gray-400 text-[11px]">
+      <div className="relative z-10 flex items-center justify-between gap-4 border-t border-white/20 pt-4 text-[10px] text-white/65">
         <p className="tracking-wider">© ProNatural Store</p>
-        <p className="text-[#4ade80] font-medium tracking-wider">Cuidando tu salud naturalmente</p>
+        <p className="text-right font-medium tracking-wider text-[#a5f3c4]">Cuidando tu salud naturalmente</p>
       </div>
     </div>
-  );
-  return (
+  );  return (
     <AuthLayout leftPanel={leftPanel}>
       <div className="mb-10">
         <p className="text-[10px] font-bold text-[#30b466] tracking-widest uppercase mb-2">Registro de Cliente</p>

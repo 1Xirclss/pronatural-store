@@ -93,10 +93,10 @@ export default function ProductDetail() {
     <div className="flex flex-col w-full bg-[#fdfbf7]">
       
       {/* Sección Superior: Imagen Original Cover + Panel de Información Dinámico */}
-      <div className="flex flex-col lg:flex-row w-full min-h-[calc(100vh-80px)]">
+      <div className="grid w-full lg:min-h-[calc(100vh-80px)] lg:grid-cols-2">
         
         {/* LADO IZQUIERDO: Imagen Original (1/2 pantalla cover) */}
-        <div className="w-full lg:w-1/2 relative min-h-[50vh] lg:min-h-full">
+        <div className="relative min-h-[48vh] w-full overflow-hidden bg-[#e8e6e1] sm:min-h-[58vh] lg:sticky lg:top-[80px] lg:h-[calc(100vh-80px)] lg:min-h-0">
           <img
             src={imageUrl}
             alt={productName}
@@ -105,40 +105,61 @@ export default function ProductDetail() {
           
           {/* Badge de Origen Técnico (Solo si el admin cargó el dato de Origen) */}
           {origen && (
-            <div className="absolute bottom-10 left-10 bg-[#e8e6e1]/90 backdrop-blur-sm px-6 py-4 shadow-lg border border-white/20">
+            <div className="absolute bottom-5 left-5 max-w-[calc(100%-2.5rem)] border border-white/30 bg-[#fdfbf7]/90 px-4 py-3 shadow-lg backdrop-blur-md sm:bottom-8 sm:left-8 sm:px-5 sm:py-4">
               <p className="text-[9px] font-bold text-gray-500 tracking-[0.2em] uppercase mb-1.5">ORIGEN TÉCNICO</p>
-              <p className="text-[13px] font-bold text-[#0a2016] tracking-widest uppercase">{origen}</p>
+              <p className="text-[11px] font-bold tracking-[0.12em] text-[#0a2016] uppercase sm:text-[12px]">{origen}</p>
             </div>
           )}
         </div>
 
         {/* LADO DERECHO: Información Dinámica */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 lg:px-24 py-12 lg:py-20 bg-[#fdfbf7]">
+        <div className="flex w-full flex-col bg-[#fdfbf7] px-5 py-8 sm:px-9 sm:py-10 lg:h-[calc(100vh-80px)] lg:min-h-0 lg:overflow-y-auto lg:px-10 xl:px-14 xl:py-12">
           
           {/* Subtítulo dinámico: SKU / Categoría */}
-          <p className="text-[10px] font-bold text-[#c25e1a] tracking-[0.2em] uppercase mb-4">
+          <p className="mb-3 text-[9px] font-bold tracking-[0.18em] text-[#b45309] uppercase sm:text-[10px]">
             {sku ? `BATCH / SKU: ${sku}` : (category ? `CATEGORÍA: ${category.toUpperCase()}` : 'LOTE SELECCIONADO')}
           </p>
 
           {/* Nombre del producto */}
-          <h1 className="text-[36px] sm:text-[48px] lg:text-[68px] font-bold leading-[0.95] tracking-tighter text-[#0a2016] mb-6 uppercase break-words">
+          <h1 className="mb-4 break-words text-[34px] font-bold leading-[0.98] tracking-[-0.045em] text-[#0a2016] uppercase sm:text-[44px] lg:text-[clamp(2.2rem,3.4vw,3.8rem)]">
             {nameParts.map((line, i) => (
               <span key={i}>{line}{i < nameParts.length - 1 && <br />}</span>
             ))}
           </h1>
 
           {/* Precio */}
-          <p className="text-[24px] sm:text-[30px] lg:text-[36px] font-bold text-[#0a2016] mb-8">
+          <p className="mb-4 text-[27px] font-bold tracking-tight text-[#0a2016] sm:text-[30px]">
             ${price.toFixed(2)}
           </p>
 
+          <div className="mb-5 max-w-2xl">
+            <h2 className="mb-1.5 text-[9px] font-bold tracking-[0.16em] text-[#849087] uppercase">Sobre este producto</h2>
+            <p className="text-[13px] leading-relaxed text-gray-600 sm:text-[14px]">
+              {description || 'Calidad natural seleccionada por ProNatural para tu bienestar.'}
+            </p>
+          </div>
+
+          {validSpecs.length > 0 && (
+            <div className="mb-5 border-y border-[#e9e7df] py-3.5">
+              <h2 className="mb-2.5 text-[9px] font-bold tracking-[0.16em] text-[#849087] uppercase">Detalles del producto</h2>
+              <dl className="grid grid-cols-1 gap-x-5 sm:grid-cols-2">
+                {validSpecs.map(([key, value]) => (
+                  <div key={key} className="flex min-w-0 items-start justify-between gap-3 border-b border-[#eeece6] py-2 last:border-0 sm:[&:nth-last-child(-n+2)]:border-0">
+                    <dt className="shrink-0 text-[9px] font-bold tracking-[0.1em] text-gray-400 uppercase">{key}</dt>
+                    <dd className="text-right text-[11px] font-semibold leading-snug text-[#173c2b]">{String(value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
           {/* Cajas de Variantes (Dinamizadas) */}
           {variantBoxes.length > 0 && (
-            <div className="flex flex-wrap gap-3 mb-10">
+            <div className="mb-5 flex flex-wrap gap-2">
               {variantBoxes.map((box, index) => (
                 <div 
                   key={index}
-                  className={`px-6 py-4 flex flex-col items-center justify-center min-w-[120px] ${
+                  className={`flex min-h-10 min-w-[108px] flex-col items-center justify-center rounded-md px-4 py-2.5 ${
                     index === 0 ? 'bg-[#0a2016] text-white' : 'bg-[#e8e6e1] text-[#0a2016]'
                   }`}
                 >
@@ -157,8 +178,8 @@ export default function ProductDetail() {
           <button
             onClick={handleAddToCart}
             disabled={stock <= 0}
-            className={`w-full text-white flex justify-between items-center px-8 py-5 transition-colors group cursor-pointer ${
-              stock <= 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0a2016] hover:bg-[#123827]'
+            className={`group flex min-h-14 w-full items-center justify-between rounded-lg px-5 py-4 text-white transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#0a2016] ${
+              stock <= 0 ? 'cursor-not-allowed bg-gray-400' : 'cursor-pointer bg-[#0a2016] hover:-translate-y-0.5 hover:bg-[#123827] hover:shadow-lg'
             }`}
           >
             <span className="text-[11px] font-bold tracking-[0.2em] uppercase">
@@ -186,40 +207,6 @@ export default function ProductDetail() {
       </div>
 
       {/* Sección Inferior: Especificaciones Técnicas o Descripción Dinámica */}
-      <div className="w-full bg-[#fdfbf7] px-6 sm:px-12 lg:px-24 py-12 lg:py-24 flex flex-col lg:flex-row gap-12 lg:gap-20 border-t border-[#e8e6e1]">
-        
-        {/* Columna Izquierda: Título y Descripción */}
-        <div className={`w-full ${validSpecs.length > 0 ? 'lg:w-1/3' : 'lg:w-full max-w-4xl'}`}>
-          <h2 className="text-[26px] lg:text-[32px] font-bold tracking-tighter text-[#0a2016] mb-6 leading-[1.05]">
-            {validSpecs.length > 0 ? (
-              <>ESPECIFICACIONES<br />TÉCNICAS</>
-            ) : (
-              'DESCRIPCIÓN DEL PRODUCTO'
-            )}
-          </h2>
-          <p className="text-[13px] text-gray-600 leading-[1.8] max-w-md">
-            {description || 'Este producto cumple con los estrictos controles de calidad de ProNatural para ofrecerte la mejor experiencia orgánica.'}
-          </p>
-        </div>
-
-        {/* Columna Derecha: Tabla Dinámica de Especificaciones (Solo se renderiza si existen datos en el admin) */}
-        {validSpecs.length > 0 && (
-          <div className="w-full lg:w-2/3 max-w-4xl">
-            <div className="space-y-0">
-              {validSpecs.map(([key, value]) => {
-                const displayKey = key === 'PROCESO' ? 'NIVEL DE ASADO' : key;
-                return (
-                  <div key={key} className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-[#e8e6e1] py-6 first:pt-0 gap-2">
-                    <span className="text-[10px] font-bold text-gray-400 tracking-[0.2em] uppercase shrink-0 w-48">{displayKey}</span>
-                    <span className="text-[14px] font-bold text-[#0a2016] tracking-wide uppercase sm:text-right flex-1">{value}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-      </div>
     </div>
   );
 }

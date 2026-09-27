@@ -45,11 +45,12 @@ export const AuthProvider = ({ children }) => {
 
     if (token) {
       const decoded = decodeJwt(token);
-      if (decoded) {
+      const hasValidRole = ['Admin', 'Employee', 'Customer'].includes(decoded?.userType);
+      if (decoded && hasValidRole && (!decoded.exp || decoded.exp * 1000 > Date.now())) {
         setIsAuthenticated(true);
         const initialUser = {
           id: decoded.id || savedUser?.id,
-          role: decoded.userType || savedUser?.role || 'Admin',
+          role: decoded.userType,
           email: decoded.email || savedUser?.email || 'admin@pronatural.com',
           name: decoded.name || savedUser?.name || 'Usuario Pro Natural',
           phone: decoded.phone || savedUser?.phone || ''
@@ -77,23 +78,15 @@ export const AuthProvider = ({ children }) => {
             } catch (e) {}
           }
         }).catch(() => {});
-      } else if (savedUser) {
-        setIsAuthenticated(true);
-        setUser(savedUser);
       } else {
-        setIsAuthenticated(true);
-        setUser({
-          id: 'dev-fallback-id',
-          role: 'Admin',
-          email: 'admin@pronatural.com',
-          name: 'Administrador Pro Natural',
-          phone: ''
-        });
+        Cookies.remove('authCookie');
+        localStorage.removeItem('authCookieFallback');
+        localStorage.removeItem('authUserFallback');
+        setIsAuthenticated(false);
+        setUser(null);
       }
-    } else if (savedUser) {
-      setIsAuthenticated(true);
-      setUser(savedUser);
     } else {
+      localStorage.removeItem('authUserFallback');
       setIsAuthenticated(false);
       setUser(null);
     }

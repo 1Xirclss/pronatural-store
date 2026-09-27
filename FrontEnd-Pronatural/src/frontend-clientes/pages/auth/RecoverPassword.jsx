@@ -162,7 +162,7 @@ export default function RecoverPassword() {
           )}
 
           <div className="mt-8 pt-8 border-t border-gray-100 text-center">
-            <Link to="/login" className="inline-flex items-center text-[10px] font-bold tracking-[0.1em] text-brand-dark hover:text-gray-600 uppercase">
+            <Link to="/" className="inline-flex items-center text-[10px] font-bold tracking-[0.1em] text-brand-dark hover:text-gray-600 uppercase">
               <svg className="w-3 h-3 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
               Volver al portal de acceso
             </Link>

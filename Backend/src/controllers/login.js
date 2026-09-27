@@ -30,6 +30,10 @@ loginClientesController.login = async (req, res) => {
       return res.status(400).json({ message: "El usuario o correo ingresado no existe." });
     }
 
+    if (typeof clientesFound.password !== 'string' || !clientesFound.password.startsWith('$2')) {
+      return res.status(401).json({ message: "Esta cuenta aún no tiene una contraseña configurada. Usa la opción de recuperación." });
+    }
+
     // Verificar si la cuenta está bloqueada temporalmente
     if (clientesFound.timeOut && clientesFound.timeOut > Date.now()) {
       const remainingMinutes = Math.ceil((clientesFound.timeOut - Date.now()) / (60 * 1000));

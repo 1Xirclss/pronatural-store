@@ -2,17 +2,21 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useGlobalData } from '../../context/GlobalDataContext';
 export default function Reviews() {
-   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
    const { reviews, addReview } = useGlobalData();
-   const onSubmit = (data) => {
-      addReview({
-         name: data.name,
-         rating: parseInt(data.rating),
-         comment: data.comment,
-         date: new Date().toISOString().split('T')[0]
-      });
-      toast.success('¡Gracias por tu reseña!');
-      reset();
+   const onSubmit = async (data) => {
+      try {
+         await addReview({
+            name: data.name.trim(),
+            rating: Number(data.rating),
+            comment: data.comment.trim(),
+            date: new Date().toISOString().split('T')[0]
+         });
+         toast.success('¡Gracias por tu reseña!');
+         reset();
+      } catch (error) {
+         toast.error(error.message || 'No se pudo publicar la reseña. Inténtalo de nuevo.');
+      }
    };
    return (
       <div className="min-h-[calc(100vh-80px)] bg-brand-bg flex flex-col lg:flex-row">
@@ -24,7 +28,7 @@ export default function Reviews() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 mt-4">
                <div>
                   <label className="block text-[9px] font-bold text-gray-400 tracking-[0.2em] uppercase mb-4">NOMBRE COMPLETO</label>
-                  <input type="text" placeholder="Tu nombre" {...register('name', { required: 'Requerido' })} className="w-full border-b border-gray-200 py-3 text-[13px] bg-transparent focus:outline-none focus:border-brand-dark transition-colors" />
+                  <input type="text" placeholder="Tu nombre" {...register('name', { required: 'Ingresa tu nombre', validate: value => !!value.trim() || 'El nombre no puede quedar vacío' })} className="w-full border-b border-gray-200 py-3 text-[13px] bg-transparent focus:outline-none focus:border-brand-dark transition-colors" />
                   {errors.name && <span className="text-red-500 text-[10px] mt-1 block">{errors.name.message}</span>}
                </div>
                <div>
@@ -39,10 +43,10 @@ export default function Reviews() {
                </div>
                <div>
                   <label className="block text-[9px] font-bold text-gray-400 tracking-[0.2em] uppercase mb-4">COMENTARIO</label>
-                  <textarea rows="3" placeholder="Escribe tu reseña aquí..." {...register('comment', { required: 'Requerido' })} className="w-full border-b border-gray-200 py-3 text-[13px] bg-transparent focus:outline-none focus:border-brand-dark transition-colors resize-none"></textarea>
+                  <textarea rows="3" placeholder="Escribe tu reseña aquí..." {...register('comment', { required: 'Escribe tu comentario', validate: value => value.trim().length >= 3 || 'El comentario debe tener al menos 3 caracteres' })} className="w-full border-b border-gray-200 py-3 text-[13px] bg-transparent focus:outline-none focus:border-brand-dark transition-colors resize-none"></textarea>
                   {errors.comment && <span className="text-red-500 text-[10px] mt-1 block">{errors.comment.message}</span>}
                </div>
-               <button type="submit" className="bg-[#0a2016] text-white flex items-center px-8 py-5 hover:bg-[#123827] transition-colors group cursor-pointer">
+               <button type="submit" disabled={isSubmitting} className="bg-[#0a2016] text-white flex items-center px-8 py-5 hover:bg-[#123827] transition-colors group cursor-pointer disabled:cursor-wait disabled:opacity-60">
                   <span className="text-[10px] font-bold tracking-[0.2em] uppercase mr-4">PUBLICAR RESEÑA</span>
                   <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
                </button>

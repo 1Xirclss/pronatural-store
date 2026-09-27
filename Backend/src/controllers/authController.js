@@ -142,6 +142,9 @@ authController.login = async (req, res) => {
     }
 
     const userPasswordHash = user.contraseña || user.password;
+    if (typeof userPasswordHash !== 'string' || !userPasswordHash.startsWith('$2')) {
+      return res.status(401).json({ message: "Esta cuenta aún no tiene una contraseña configurada. Usa la opción de recuperación." });
+    }
     const isMatch = await bcrypt.compare(password, userPasswordHash);
 
     if (!isMatch) {
