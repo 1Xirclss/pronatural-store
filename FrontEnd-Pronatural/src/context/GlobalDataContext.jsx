@@ -3,7 +3,16 @@
 // Cualquier componente que importe useGlobalData() puede leer y modificar estos datos
 import { createContext, useContext, useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
+import { toast } from 'react-hot-toast';
 import { api } from '../utils/api';
+
+export const SALES_UPDATED_EVENT = 'pronatural:sales-updated';
+
+function notifySalesChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(SALES_UPDATED_EVENT));
+  }
+}
 
 // Función auxiliar para leer el JWT del token de sesión
 // Devuelve el payload del token sin necesidad de una librería externa
@@ -51,28 +60,38 @@ export function GlobalDataProvider({ children }) {
         // Verificar el token del usuario para saber si es admin o empleado
         const token = Cookies.get('authCookie') || (typeof localStorage !== 'undefined' ? localStorage.getItem('authCookieFallback') : null);
         const decoded = token ? decodeJwt(token) : null;
-        const isAdmin = decoded?.userType === 'Admin' || decoded?.userType === 'Employee';
+        const isAdmin = decoded?.userType === 'Admin';
+        const isEmployee = decoded?.userType === 'Employee';
+        const canReadSales = isAdmin || isEmployee;
+        const canReadCustomers = isAdmin || isEmployee;
 
         // Cargar datos en paralelo para mayor eficiencia
         // Los datos privados (ventas, empleados, clientes) solo se cargan si es admin o empleado
-        const [apiProducts, apiSales, apiCategories, apiEmployees, apiCustomers, apiReviews, apiConfig] = await Promise.all([
-          api.getProducts().catch(() => []),
-          isAdmin ? api.getSales().catch(() => []) : Promise.resolve([]),
-          api.getCategories().catch(() => []),
-          isAdmin ? api.getEmployees().catch(() => []) : Promise.resolve([]),
-          isAdmin ? api.getClientes().catch(() => []) : Promise.resolve([]),
-          api.getReviews().catch(() => []),
-          api.getConfig().catch(() => null)
+        const results = await Promise.allSettled([
+          api.getProducts(),
+          canReadSales ? api.getSales() : Promise.resolve([]),
+          api.getCategories(),
+          isAdmin ? api.getEmployees() : Promise.resolve([]),
+          canReadCustomers ? api.getClientes() : Promise.resolve([]),
+          api.getReviews(),
+          api.getConfig()
         ]);
+        const setters = [setProducts, setSales, setCategories, setUsers, setCustomers, setReviews, setConfig];
+        const labels = ['productos', 'ventas', 'categorías', 'personal', 'clientes', 'reseñas', 'configuración'];
+        const failedLabels = [];
 
-        // Guardar los datos en el estado global
-        setProducts(Array.isArray(apiProducts) ? apiProducts : []);
-        setSales(Array.isArray(apiSales) ? apiSales : []);
-        setCategories(Array.isArray(apiCategories) ? apiCategories : []);
-        setUsers(Array.isArray(apiEmployees) ? apiEmployees : []);
-        setCustomers(Array.isArray(apiCustomers) ? apiCustomers : []);
-        setReviews(Array.isArray(apiReviews) ? apiReviews : []);
-        setConfig(apiConfig);
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            setters[index](index === 6 ? result.value : (Array.isArray(result.value) ? result.value : []));
+          } else {
+            failedLabels.push(labels[index]);
+            console.error(`Error al cargar ${labels[index]} desde el servidor:`, result.reason);
+          }
+        });
+
+        if (failedLabels.length > 0) {
+          toast.error(`No se pudieron cargar ${failedLabels.join(', ')}. Verifica tu conexión e inténtalo de nuevo.`, { id: 'global-data-load-error' });
+        }
       } catch (error) {
         console.error("Error loading data from backend:", error);
       } finally {
@@ -102,7 +121,7 @@ export function GlobalDataProvider({ children }) {
       setProducts(prev => prev.map(p => (p._id === id || p.id === id) ? { ...p, ...updated } : p));
     } catch (e) {
       console.error("Error updating product:", e);
-      setProducts(prev => prev.map(p => (p._id === id || p.id === id) ? { ...p, ...updatedData } : p));
+      throw e;
     }
   };
 
@@ -113,7 +132,7 @@ export function GlobalDataProvider({ children }) {
       setProducts(prev => prev.map(p => (p._id === id || p.id === id) ? { ...p, stock: Number(newStock) } : p));
     } catch (e) {
       console.error("Error updating stock:", e);
-      setProducts(prev => prev.map(p => (p._id === id || p.id === id) ? { ...p, stock: Number(newStock) } : p));
+      throw e;
     }
   };
 
@@ -137,8 +156,7 @@ export function GlobalDataProvider({ children }) {
       setCategories(prev => [...prev, res.category || res.data || res]);
     } catch (e) {
       console.error("Error adding category:", e);
-      // Si falla, agregar la categoría localmente de todas formas
-      setCategories(prev => [...prev, category]);
+      throw e;
     }
   };
 
@@ -149,8 +167,7 @@ export function GlobalDataProvider({ children }) {
       setCategories(prev => prev.filter(c => (c.id !== id && c._id !== id)));
     } catch (e) {
       console.error("Error deleting category:", e);
-      // Actualizar localmente aunque falle el backend
-      setCategories(prev => prev.filter(c => (c.id !== id && c._id !== id)));
+      throw e;
     }
   };
 
@@ -161,8 +178,7 @@ export function GlobalDataProvider({ children }) {
       setCategories(prev => prev.map(c => (c.id === id || c._id === id) ? { ...c, ...(res.category || res.data || res) } : c));
     } catch (e) {
       console.error("Error updating category:", e);
-      // Actualizar localmente aunque falle el backend
-      setCategories(prev => prev.map(c => (c.id === id || c._id === id) ? { ...c, ...updatedData } : c));
+      throw e;
     }
   };
 
@@ -189,18 +205,23 @@ export function GlobalDataProvider({ children }) {
 
       // Descontar el stock de los productos vendidos en la lista local
       // para que la UI se actualice inmediatamente sin recargar
-      const items = saleData.items || [];
+      const items = saleData.items || rawItems;
       let newProducts = [...products];
-      items.forEach(item => {
-        const pIdx = newProducts.findIndex(p => p.id === item.id || p._id === item.id);
-        if (pIdx >= 0) {
-          newProducts[pIdx] = { ...newProducts[pIdx], stock: Math.max(0, newProducts[pIdx].stock - item.quantity) };
-        }
-      });
-      setProducts(newProducts);
+      if (formattedSale.status !== 'Pendiente WhatsApp') {
+        items.forEach(item => {
+          const itemId = item.productId || item.id || item._id;
+          const itemQuantity = Number(item.quantity || item.qty);
+          const pIdx = newProducts.findIndex(p => String(p.id || p._id) === String(itemId));
+          if (pIdx >= 0 && Number.isFinite(itemQuantity) && itemQuantity > 0) {
+            newProducts[pIdx] = { ...newProducts[pIdx], stock: Math.max(0, (newProducts[pIdx].stock || 0) - itemQuantity) };
+          }
+        });
+        setProducts(newProducts);
+      }
 
       // Agregar la venta guardada al historial
       setSales(prev => [savedSale, ...prev]);
+      notifySalesChanged();
       return savedSale;
     } catch (e) {
       console.error("Error creating sale:", e);
@@ -225,6 +246,11 @@ export function GlobalDataProvider({ children }) {
       const updatedSale = updated.sale || updated;
       // Reemplazar la venta en la lista con el estado actualizado
       setSales(prev => prev.map(s => (s.id === id || s._id === id) ? { ...s, ...updatedSale } : s));
+      // El backend ajusta existencias cuando cambia el estado de una venta.
+      api.getProducts().then(setProducts).catch(error => {
+        console.error('No se pudo actualizar el inventario después del cambio de venta:', error);
+      });
+      notifySalesChanged();
     } catch (e) {
       console.error(e);
       throw e;
@@ -236,10 +262,10 @@ export function GlobalDataProvider({ children }) {
     try {
       await api.deleteSale(id);
       setSales(prev => prev.filter(s => s.id !== id && s._id !== id));
+      notifySalesChanged();
     } catch(e) {
       console.error("Error deleting sale:", e);
-      // Eliminar localmente aunque falle el backend
-      setSales(prev => prev.filter(s => s.id !== id && s._id !== id));
+      throw e;
     }
   };
 

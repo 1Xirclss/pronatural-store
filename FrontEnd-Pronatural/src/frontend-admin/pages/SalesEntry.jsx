@@ -70,14 +70,15 @@ export default function SalesEntry() {
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const taxes = (subtotal * taxRate) / 100;
   const total = subtotal + taxes;
-  const change = Math.max(0, parseFloat(amountGiven || '0') - total);
+  const parsedAmountGiven = Number(amountGiven);
+  const change = Number.isFinite(parsedAmountGiven) ? Math.max(0, parsedAmountGiven - total) : 0;
   const handleConfirmSale = async () => {
     if (cart.length === 0) {
       toast.error('El carrito está vacío');
       return;
     }
-    if (paymentMethod === 'Efectivo' && parseFloat(amountGiven || '0') < total) {
-      toast.error('El monto entregado es menor al total');
+    if (paymentMethod === 'Efectivo' && (!Number.isFinite(parsedAmountGiven) || parsedAmountGiven < total)) {
+      toast.error('Ingresa un monto válido igual o mayor al total.');
       return;
     }
     try {
@@ -102,195 +103,166 @@ export default function SalesEntry() {
       setClient('Cliente General');
       setAmountGiven('');
     } catch (error) {
-      toast.error('Error al registrar la venta');
+      toast.error(error.message || 'No se pudo registrar la venta. Inténtalo de nuevo.');
     }
   };
   return (
     <>
-      <div className="max-w-[1200px] mx-auto pb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="mx-auto max-w-[1440px] space-y-6 pb-10">
+        <header className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#17221c] via-[#121a17] to-[#101416] px-5 py-6 sm:px-7">
+          <div className="pointer-events-none absolute -right-10 -top-24 h-64 w-64 rounded-full border border-[#30b466]/10" />
+          <div className="relative flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight">Nueva Venta</h1>
-              <p className="text-gray-400 text-[14px] mt-1">Registrar una nueva transacción en el punto de venta.</p>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#63d895]">Punto de venta</p>
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-[30px]">Nueva venta</h1>
+              <p className="mt-1 text-sm text-slate-400">Escanea o busca productos y registra el pago.</p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10 ml-2">
-              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-gray-400"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span className="text-gray-400 text-[11px] font-medium tracking-wide">
-                {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </span>
+            <div className="rounded-xl border border-white/[0.08] bg-black/20 px-4 py-2.5 text-xs font-medium text-slate-300">
+              {new Date().toLocaleDateString('es-SV', { day: '2-digit', month: 'long', year: 'numeric' })}
             </div>
           </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
-          <div className="flex flex-col gap-6">
-            <div className={`border rounded-[12px] p-2 relative transition-all duration-300 ${exactMatch ? 'bg-[#1b4332]/20 border-[#30b466]' : 'bg-[#161b1e] border-white/5'}`}>
-              <div className="relative z-20">
-                <span className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 ${exactMatch ? 'text-[#4ade80]' : 'text-gray-400'}`}>
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                </span>
+        </header>
+
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="min-w-0 space-y-4">
+            <div className={`relative rounded-2xl border p-2 transition-colors ${exactMatch ? 'border-[#30b466]/60 bg-[#30b466]/[0.04]' : 'border-white/[0.08] bg-[#161b1e]'}`}>
+              <div className="relative">
+                <svg className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${exactMatch ? 'text-[#63d895]' : 'text-slate-500'}`} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4" strokeLinecap="round"/></svg>
                 <input
-                  type="text"
+                  type="search"
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar productos o escanear código (SKU)..."
-                  className={`w-full bg-[#0d1114] border rounded-[8px] pl-12 pr-12 py-3.5 text-[14px] text-white transition-all duration-300 focus:outline-none ${exactMatch ? 'border-[#30b466]/50 focus:border-[#4ade80] placeholder-[#30b466]/50 shadow-[0_0_15px_rgba(48,180,102,0.1)]' : 'border-white/5 focus:border-white/20 placeholder-gray-500'}`}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && exactMatch) { e.preventDefault(); addToCart(exactMatch); } }}
+                  placeholder="Buscar producto o escanear código SKU…"
+                  aria-label="Buscar producto o escanear código SKU"
+                  className="w-full rounded-xl border border-white/[0.06] bg-[#0d1114] py-4 pl-12 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-[#30b466]/60 focus:outline-none focus:ring-2 focus:ring-[#30b466]/10"
                 />
               </div>
-              {filteredProducts.length > 0 && (
-                <div className="absolute top-[110%] left-0 right-0 bg-[#161b1e] border border-white/10 rounded-[12px] overflow-hidden shadow-2xl z-30 max-h-[300px] overflow-y-auto">
-                  {filteredProducts.map(p => (
-                    <div 
-                      key={p.id} 
-                      onClick={() => addToCart(p)}
-                      className="flex items-center gap-4 p-3 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 transition-colors"
-                    >
-                      <img src={p.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} className="w-10 h-10 rounded-[6px] object-cover" alt="" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-white font-medium truncate">{p.name}</p>
-                        <p className="text-[11px] text-gray-500 font-mono">Stock: {p.stock} | {p.sku}</p>
-                      </div>
-                      <p className="text-[#4ade80] font-bold text-[14px]">${p.price.toFixed(2)}</p>
-                    </div>
-                  ))}
+              {search.length > 1 && (
+                <div className="absolute inset-x-2 top-[calc(100%+8px)] z-30 max-h-80 overflow-y-auto rounded-xl border border-white/10 bg-[#171d20] shadow-2xl">
+                  {filteredProducts.length > 0 ? filteredProducts.map((product) => {
+                    const productId = product._id || product.id;
+                    const productName = getName(product);
+                    const productPrice = getPrice(product);
+                    return (
+                      <button
+                        key={productId}
+                        type="button"
+                        onClick={() => addToCart(product)}
+                        disabled={product.stock <= 0}
+                        className="flex w-full items-center gap-3 border-b border-white/[0.05] p-3 text-left transition hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-45 last:border-b-0 sm:gap-4 sm:p-4"
+                      >
+                        <img src={product.img || product.image || 'https://placehold.co/96x96/161b22/30b466?text=PN'} className="h-12 w-12 shrink-0 rounded-lg bg-[#0d1114] object-cover" alt="" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-100">{productName}</span>
+                          <span className="mt-1 block text-xs text-slate-500">SKU {getSku(product) || '—'} · Stock {product.stock ?? 0}</span>
+                        </span>
+                        <span className="shrink-0 text-sm font-bold text-[#63d895]">${productPrice.toFixed(2)}</span>
+                      </button>
+                    );
+                  }) : <p className="p-5 text-center text-sm text-slate-400">No encontramos productos con ese nombre o código.</p>}
                 </div>
               )}
+              <p className="px-2 pb-1 pt-2 text-[11px] text-slate-500">Escribe al menos dos caracteres o escanea el SKU para agregar un producto.</p>
             </div>
-            <div className="bg-[#161b1e] border border-white/5 rounded-[12px] overflow-hidden min-h-[300px] overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[500px]">
-                <thead>
-                  <tr className="border-b border-white/5 bg-white/[0.02]">
-                    <th className="py-4 px-6 text-[11px] uppercase tracking-wider text-gray-500 font-medium">Producto</th>
-                    <th className="py-4 px-6 text-[11px] uppercase tracking-wider text-gray-500 font-medium text-center">Cant.</th>
-                    <th className="py-4 px-6 text-[11px] uppercase tracking-wider text-gray-500 font-medium text-right">Precio</th>
-                    <th className="py-4 px-6 text-[11px] uppercase tracking-wider text-gray-500 font-medium text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {cart.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="py-12 text-center text-gray-500 text-[13px]">
-                        El carrito está vacío. Busca un producto para añadirlo.
-                      </td>
-                    </tr>
-                  ) : (
-                    cart.map(item => (
-                      <tr key={item.id} className="hover:bg-white/[0.01] transition-colors">
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-4">
-                            <img src={item.img || 'https://placehold.co/400x400/161b22/30b466?text=ProNatural'} className="w-12 h-12 rounded-[8px] object-cover bg-[#0d1114]" alt="" />
-                            <div>
-                              <p className="text-[14px] text-white font-medium">{item.name}</p>
-                              <p className="text-[11px] text-gray-500 line-clamp-1">{item.desc}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center justify-center gap-3">
-                            <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer">
-                              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            </button>
-                            <span className="text-[15px] font-bold text-white w-6 text-center">{item.qty}</span>
-                            <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 rounded-full border border-[#30b466]/30 flex items-center justify-center text-[#4ade80] hover:bg-[#30b466]/10 transition-colors cursor-pointer">
-                              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            </button>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-right text-[14px] text-gray-300">
-                          ${item.price.toFixed(2)}
-                        </td>
-                        <td className="py-4 px-6 text-right text-[15px] text-white font-medium">
-                          ${(item.price * item.qty).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div className="flex flex-col gap-4 sticky top-[30px] self-start">
-            <div className="bg-[#161b1e] border border-white/5 rounded-[12px] p-5">
-              <label className="text-[11px] uppercase tracking-wider text-gray-500 font-medium mb-3 block">Cliente (Opcional)</label>
-              <div className="relative">
-                <select
-                  value={client}
-                  onChange={e => setClient(e.target.value)}
-                  className="w-full bg-[#0d1114] border border-white/5 rounded-[8px] px-4 py-2.5 text-[13px] text-white focus:outline-none focus:border-[#4ade80] transition-colors appearance-none cursor-pointer"
-                >
-                  <option value="Cliente General">Cliente General</option>
-                  {customers.map((c, index) => (
-                    <option key={c._id || c.id || index} value={c._id || c.id}>{c.name} {c.lastName}</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
-                </div>
-              </div>
-            </div>
-            <div className="bg-[#161b1e] border border-white/5 rounded-[12px] p-5">
-              <label className="text-[11px] uppercase tracking-wider text-gray-500 font-medium mb-4 block">Método de Pago</label>
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <button
-                  onClick={() => setPaymentMethod('Efectivo')}
-                  className={`py-3 flex flex-col items-center justify-center gap-1.5 rounded-[10px] border transition-colors cursor-pointer ${
-                    paymentMethod === 'Efectivo' 
-                    ? 'bg-[#1b4332]/20 border-[#30b466] text-[#4ade80]' 
-                    : 'bg-[#0d1114] border-white/5 text-gray-400 hover:border-white/20'
-                  }`}
-                >
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-                  <span className="text-[11px] font-bold uppercase">Efectivo</span>
-                </button>
 
+            <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#14191c]">
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">Productos de la venta</h2>
+                  <p className="mt-1 text-xs text-slate-500">{cart.reduce((count, item) => count + item.qty, 0)} unidades · {cart.length} productos</p>
+                </div>
+                <span className="rounded-full bg-[#30b466]/10 px-3 py-1 text-xs font-semibold text-[#63d895]">Carrito</span>
               </div>
-              {paymentMethod === 'Efectivo' && (
-                <>
-                  <label className="text-[11px] text-gray-400 mb-2 block">Monto Entregado</label>
-                  <div className="relative mb-4">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                    <input
-                      type="number"
-                      value={amountGiven}
-                      onChange={(e) => setAmountGiven(e.target.value)}
-                      className="w-full bg-[#0d1114] border border-white/5 rounded-[8px] pl-8 pr-4 py-2.5 text-[14px] text-white focus:outline-none focus:border-[#4ade80] transition-colors"
-                    />
-                  </div>
-                  <div className="bg-[#0d1114] border border-white/5 rounded-[8px] px-4 py-3 flex items-center justify-between">
-                    <span className="text-[13px] text-gray-400">Cambio a entregar</span>
-                    <span className="text-[15px] font-bold text-[#4ade80]">${change.toFixed(2)}</span>
-                  </div>
-                </>
+              {cart.length === 0 ? (
+                <div className="flex min-h-64 flex-col items-center justify-center px-6 py-12 text-center">
+                  <span className="mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-slate-500" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.6"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 9H6" strokeLinecap="round" strokeLinejoin="round"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+                  </span>
+                  <p className="text-sm font-semibold text-slate-200">El carrito está vacío</p>
+                  <p className="mt-1 max-w-xs text-xs leading-5 text-slate-500">Busca un producto por nombre o escanea su código para comenzar la venta.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.06]">
+                  {cart.map((item) => (
+                    <article key={item.id} className="flex flex-col gap-4 p-4 transition hover:bg-white/[0.02] sm:flex-row sm:items-center sm:gap-5 sm:px-5">
+                      <img src={item.img || item.image || 'https://placehold.co/96x96/161b22/30b466?text=PN'} className="h-14 w-14 shrink-0 rounded-xl bg-[#0d1114] object-cover" alt="" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="break-words text-sm font-semibold text-slate-100">{item.name}</h3>
+                        <p className="mt-1 text-xs text-slate-500">${item.price.toFixed(2)} por unidad</p>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 sm:justify-end">
+                        <div className="flex items-center rounded-xl border border-white/[0.08] bg-[#0d1114] p-1">
+                          <button type="button" onClick={() => updateQty(item.id, -1)} aria-label={`Quitar una unidad de ${item.name}`} className="grid h-9 w-9 place-items-center rounded-lg text-slate-300 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#63d895]">−</button>
+                          <span className="w-9 text-center text-sm font-semibold text-white">{item.qty}</span>
+                          <button type="button" onClick={() => updateQty(item.id, 1)} aria-label={`Agregar una unidad de ${item.name}`} className="grid h-9 w-9 place-items-center rounded-lg text-[#63d895] transition hover:bg-[#30b466]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#63d895]">+</button>
+                        </div>
+                        <span className="min-w-[78px] text-right text-sm font-bold text-white">${(item.price * item.qty).toFixed(2)}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               )}
             </div>
-            <div className="bg-[#161b1e] border border-white/5 rounded-[12px] p-5">
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-[13px]">
-                  <span className="text-gray-400">Subtotal</span>
-                  <span className="text-gray-200">${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-[13px]">
-                  <span className="text-gray-400">Impuestos ({taxRate}%)</span>
-                  <span className="text-gray-200">${taxes.toFixed(2)}</span>
-                </div>
+          </section>
+
+          <aside className="space-y-4 xl:sticky xl:top-5">
+            <section className="rounded-2xl border border-white/[0.08] bg-[#161b1e] p-5">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-white">Cliente</h2>
+                <p className="mt-1 text-xs text-slate-500">Opcional, para asociar la compra.</p>
               </div>
-              <div className="flex justify-between items-center pt-4 border-t border-white/5 mb-6">
-                <span className="text-[12px] text-gray-400 uppercase tracking-widest font-bold">Total a Pagar</span>
-                <span className="text-[20px] font-bold text-[#4ade80]">${total.toFixed(2)}</span>
-              </div>
-              <button 
-                onClick={handleConfirmSale}
-                className="w-full py-3.5 bg-[#30b466] hover:bg-[#289e58] text-[#0a110d] text-[13px] font-bold rounded-[8px] transition-colors flex justify-center items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(48,180,102,0.3)]"
+              <select
+                value={client}
+                onChange={(e) => setClient(e.target.value)}
+                aria-label="Cliente de la venta"
+                className="w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0d1114] px-4 py-3 text-sm text-white focus:border-[#30b466]/60 focus:outline-none focus:ring-2 focus:ring-[#30b466]/10"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                CONFIRMAR VENTA
+                <option value="Cliente General">Cliente General</option>
+                {customers.map((customer, index) => <option key={customer._id || customer.id || index} value={customer._id || customer.id}>{customer.name} {customer.lastName}</option>)}
+              </select>
+            </section>
+
+            <section className="rounded-2xl border border-white/[0.08] bg-[#161b1e] p-5">
+              <h2 className="text-sm font-semibold text-white">Forma de pago</h2>
+              <button type="button" aria-pressed={paymentMethod === 'Efectivo'} onClick={() => setPaymentMethod('Efectivo')} className="mt-4 flex w-full items-center gap-3 rounded-xl border border-[#30b466]/35 bg-[#30b466]/[0.08] p-4 text-left text-[#63d895]">
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#30b466]/10" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9h.01M18 15h.01" strokeLinecap="round"/></svg></span>
+                <span><span className="block text-sm font-semibold">Efectivo</span><span className="mt-0.5 block text-xs text-slate-400">Pago en caja</span></span>
+                <span className="ml-auto h-2 w-2 rounded-full bg-[#63d895]" />
               </button>
-            </div>
-          </div>
+              {paymentMethod === 'Efectivo' && (
+                <div className="mt-5">
+                  <label htmlFor="amount-given" className="mb-2 block text-xs font-medium text-slate-400">Monto recibido</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">$</span>
+                    <input id="amount-given" type="number" min="0" step="0.01" inputMode="decimal" value={amountGiven} onChange={(e) => setAmountGiven(e.target.value)} placeholder="0.00" className="w-full rounded-xl border border-white/[0.08] bg-[#0d1114] py-3 pl-9 pr-4 text-sm text-white placeholder:text-slate-600 focus:border-[#30b466]/60 focus:outline-none focus:ring-2 focus:ring-[#30b466]/10" />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-[#0d1114] px-4 py-3">
+                    <span className="text-xs text-slate-400">Cambio</span>
+                    <span className="text-sm font-bold text-[#63d895]">${change.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-white/[0.08] bg-[#161b1e] p-5">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between text-slate-400"><span>Subtotal</span><span className="text-slate-200">${subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-slate-400"><span>Impuestos ({taxRate}%)</span><span className="text-slate-200">${taxes.toFixed(2)}</span></div>
+              </div>
+              <div className="my-5 border-t border-white/[0.08]" />
+              <div className="flex items-end justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Total a pagar</span>
+                <span className="text-2xl font-bold tracking-tight text-[#63d895]">${total.toFixed(2)}</span>
+              </div>
+              <button type="button" onClick={handleConfirmSale} disabled={cart.length === 0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#30b466] px-4 py-4 text-sm font-bold text-[#07130c] shadow-[0_10px_28px_rgba(48,180,102,0.16)] transition hover:-translate-y-0.5 hover:bg-[#3ac574] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#63d895] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 7 10 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="10"/></svg>
+                Confirmar venta
+              </button>
+            </section>
+          </aside>
         </div>
-      </div>
-      
-      {/* Modal de Ticket Virtual */}
+      </div>      {/* Modal de Ticket Virtual */}
       {showTicket && lastSale && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a110d]/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-[#161b1e] border border-white/10 rounded-[16px] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">

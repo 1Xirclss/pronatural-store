@@ -1,4 +1,5 @@
 import clientesModel from "../models/Clientes.js";
+import bcrypt from "bcryptjs";
 
 const controladoresClientes = {};
 
@@ -35,12 +36,16 @@ controladoresClientes.createCliente = async (req, res) => {
         let { name, lastName, email, phone, birthdate, status, password } = req.body;
 
         // Comprobar que el nombre no venga vacío
-        if (!name || !name.trim()) {
+        if (typeof name !== 'string' || !name.trim()) {
             return res.status(400).json({ message: "El nombre del cliente es obligatorio." });
         }
 
+        if (typeof lastName !== 'string' || !lastName.trim()) {
+            return res.status(400).json({ message: "El apellido del cliente es obligatorio." });
+        }
+
         // Comprobar que el correo no venga vacío
-        if (!email || !email.trim()) {
+        if (typeof email !== 'string' || !email.trim()) {
             return res.status(400).json({ message: "El correo electrónico es obligatorio." });
         }
 
@@ -56,8 +61,35 @@ controladoresClientes.createCliente = async (req, res) => {
             return res.status(400).json({ message: "El formato de correo no es válido." });
         }
 
+        if (phone) {
+            const digits = String(phone).replace(/\D/g, '');
+            const nationalDigits = digits.startsWith('503') && digits.length === 11 ? digits.slice(3) : digits;
+            if (nationalDigits.length !== 8) {
+                return res.status(400).json({ message: "El teléfono debe contener 8 dígitos de El Salvador." });
+            }
+        }
+
+        if (birthdate) {
+            const parsedBirthdate = new Date(birthdate);
+            if (Number.isNaN(parsedBirthdate.getTime()) || parsedBirthdate > new Date()) {
+                return res.status(400).json({ message: "La fecha de nacimiento no es válida." });
+            }
+        }
+
+        if (status && !["Active", "Inactive"].includes(status)) {
+            return res.status(400).json({ message: "Selecciona un estado válido para el cliente." });
+        }
+
+        let hashedPassword;
+        if (password !== undefined && password !== '') {
+            if (typeof password !== 'string' || password.trim().length < 6) {
+                return res.status(400).json({ message: "La contraseña debe tener al menos 6 caracteres." });
+            }
+            hashedPassword = await bcrypt.hash(password.trim(), 10);
+        }
+
         // Verificar en MongoDB que el correo no se encuentre registrado previamente
-        const clienteExistente = await clientesModel.findOne({ email });
+        const clienteExistente = await clientesModel.findOne({ $or: [{ email }, { correo: email }] });
         if (clienteExistente) {
             return res.status(400).json({ message: "Este correo ya está registrado." });
         }
@@ -73,7 +105,7 @@ controladoresClientes.createCliente = async (req, res) => {
             telefono: phone,
             phone,
             birthdate,
-            password: password || '123456', // Contraseña temporal asignada si no especifica una
+            ...(hashedPassword && { password: hashedPassword }),
             status: status || 'Active',
             isVerified: true
         });
@@ -82,7 +114,15 @@ controladoresClientes.createCliente = async (req, res) => {
         const guardado = await nuevoCliente.save();
 
         // Devolver respuesta con estado 201 (Creado)
-        return res.status(201).json(guardado);
+        return res.status(201).json({
+            id: guardado._id,
+            name: guardado.name,
+            lastName: guardado.lastName,
+            email: guardado.email,
+            phone: guardado.phone || guardado.telefono || '',
+            birthdate: guardado.birthdate || '',
+            status: guardado.status || 'Active'
+        });
     } catch (error) {
         console.error("Error al crear cliente:", error);
         return res.status(500).json({ message: "Error interno al crear cliente." });
@@ -101,24 +141,50 @@ controladoresClientes.updateClientes = async (req, res) => {
             return res.status(400).json({ message: "Se requiere el ID del cliente." });
         }
 
-        // Validar que el nombre no sea solo espacios
-        if (name && !name.trim()) {
+        // Validar que los nombres recibidos no queden vacíos
+        if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
             return res.status(400).json({ message: "El nombre no puede estar vacío." });
         }
 
+        if (lastName !== undefined && (typeof lastName !== 'string' || !lastName.trim())) {
+            return res.status(400).json({ message: "El apellido no puede estar vacío." });
+        }
+
         // Validar el formato y duplicidad del correo si se intenta modificar
-        if (email) {
-            email = email.trim().toLowerCase();
+        if (email !== undefined) {
+            email = typeof email === 'string' ? email.trim().toLowerCase() : '';
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
+            if (!email || !emailRegex.test(email)) {
                 return res.status(400).json({ message: "El correo ingresado no es válido." });
             }
 
             // Comprobar si otro cliente ya usa este mismo correo
-            const duplicaEmail = await clientesModel.findOne({ email, _id: { $ne: id } });
+            const duplicaEmail = await clientesModel.findOne({
+                $or: [{ email }, { correo: email }],
+                _id: { $ne: id }
+            });
             if (duplicaEmail) {
                 return res.status(400).json({ message: "Este correo ya está en uso por otro cliente." });
             }
+        }
+
+        if (phone !== undefined && String(phone).trim()) {
+            const digits = String(phone).replace(/\D/g, '');
+            const nationalDigits = digits.startsWith('503') && digits.length === 11 ? digits.slice(3) : digits;
+            if (nationalDigits.length !== 8) {
+                return res.status(400).json({ message: "El teléfono debe contener 8 dígitos de El Salvador." });
+            }
+        }
+
+        if (birthdate) {
+            const parsedBirthdate = new Date(birthdate);
+            if (Number.isNaN(parsedBirthdate.getTime()) || parsedBirthdate > new Date()) {
+                return res.status(400).json({ message: "La fecha de nacimiento no es válida." });
+            }
+        }
+
+        if (status !== undefined && !["Active", "Inactive"].includes(status)) {
+            return res.status(400).json({ message: "Selecciona un estado válido para el cliente." });
         }
 
         // Armar el objeto con los campos a modificar
@@ -143,8 +209,19 @@ controladoresClientes.updateClientes = async (req, res) => {
             return res.status(404).json({ message: "Cliente no encontrado." });
         }
 
-        // Responder con la confirmación de la actualización
-        return res.status(200).json({ message: "Cliente actualizado exitosamente", customer: clienteActualizado });
+        // Devolver únicamente los datos que necesita la interfaz administrativa.
+        return res.status(200).json({
+            message: "Cliente actualizado exitosamente",
+            customer: {
+                id: clienteActualizado._id,
+                name: clienteActualizado.name || clienteActualizado.nombre || '',
+                lastName: clienteActualizado.lastName || clienteActualizado.apellido || '',
+                email: clienteActualizado.email || clienteActualizado.correo || '',
+                phone: clienteActualizado.phone || clienteActualizado.telefono || '',
+                birthdate: clienteActualizado.birthdate || clienteActualizado.fechaNacimiento || '',
+                status: clienteActualizado.status || 'Active'
+            }
+        });
     } catch (error) {
         console.error("Error al actualizar cliente:", error);
         return res.status(500).json({ message: "Error interno al actualizar cliente." });

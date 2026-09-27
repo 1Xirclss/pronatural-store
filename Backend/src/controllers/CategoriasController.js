@@ -1,6 +1,7 @@
 import categoriesModel from "../models/Categorias.js";
 
 const controladoresCategorias = {};
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Obtener categorías
 controladoresCategorias.getCategories = async (req, res) => {
@@ -61,8 +62,13 @@ controladoresCategorias.getCategoryById = async (req, res) => {
 controladoresCategorias.createCategory = async (req, res) => {
   try {
     let { nombre, name, descripcion, description } = req.body;
-    const catName = (nombre || name || '').trim();
-    const catDesc = (descripcion || description || '').trim();
+    const rawName = nombre ?? name ?? '';
+    const rawDescription = descripcion ?? description ?? '';
+    if (typeof rawName !== 'string' || typeof rawDescription !== 'string') {
+      return res.status(400).json({ message: "El nombre y la descripción deben ser texto válido." });
+    }
+    const catName = rawName.trim();
+    const catDesc = rawDescription.trim();
 
     if (!catName) {
       return res.status(400).json({ message: "El nombre de la categoría es obligatorio." });
@@ -70,7 +76,7 @@ controladoresCategorias.createCategory = async (req, res) => {
 
     // Evitar nombres duplicados
     const existente = await categoriesModel.findOne({ 
-      nombre: { $regex: new RegExp(`^${catName}$`, 'i') } 
+      nombre: { $regex: new RegExp(`^${escapeRegex(catName)}$`, 'i') } 
     });
 
     if (existente) {
@@ -109,8 +115,21 @@ controladoresCategorias.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
     let { nombre, name, descripcion, description, estado } = req.body;
-    const catName = (nombre || name || '').trim();
-    const catDesc = (descripcion || description || '').trim();
+    const rawName = nombre ?? name;
+    const rawDescription = descripcion ?? description;
+
+    if (rawName !== undefined && (typeof rawName !== 'string' || !rawName.trim())) {
+      return res.status(400).json({ message: "El nombre de la categoría no puede estar vacío." });
+    }
+    if (rawDescription !== undefined && typeof rawDescription !== 'string') {
+      return res.status(400).json({ message: "La descripción de la categoría no es válida." });
+    }
+    if (estado !== undefined && !['Activo', 'Inactivo'].includes(estado)) {
+      return res.status(400).json({ message: "Selecciona un estado válido para la categoría." });
+    }
+
+    const catName = rawName?.trim() || '';
+    const catDesc = rawDescription?.trim();
 
     if (!id) {
       return res.status(400).json({ message: "Se requiere el ID de la categoría." });
@@ -118,7 +137,7 @@ controladoresCategorias.updateCategory = async (req, res) => {
 
     if (catName) {
       const existente = await categoriesModel.findOne({
-        nombre: { $regex: new RegExp(`^${catName}$`, 'i') },
+        nombre: { $regex: new RegExp(`^${escapeRegex(catName)}$`, 'i') },
         _id: { $ne: id }
       });
       if (existente) {

@@ -72,6 +72,7 @@ async function apiRequest(endpoint, options = {}) {
 export const api = {
   // Productos
   getProducts: () => apiRequest('/products'),
+  getMostSoldProduct: () => apiRequest('/products/most-sold', { cache: 'no-store' }),
   getProduct: (id) => apiRequest(`/products/${id}`),
   createProduct: (productData) => {
     if (productData.file) {

@@ -24,14 +24,14 @@ function ProductModal({ onClose, onSave, initialData }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.name.trim()) { toast.error('El nombre del producto es requerido'); return; }
-    const priceNum = parseFloat(form.price);
-    if (isNaN(priceNum) || priceNum <= 0) {
+    const priceNum = Number(form.price);
+    if (form.price === '' || !Number.isFinite(priceNum) || priceNum <= 0) {
       toast.error('El precio debe ser un número mayor a 0');
       return;
     }
-    const stockNum = parseInt(form.stock) || 0;
-    if (stockNum < 0) {
-      toast.error('El stock debe ser mayor o igual a 0');
+    const stockNum = form.stock === '' ? 0 : Number(form.stock);
+    if (!Number.isFinite(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
+      toast.error('El stock debe ser un número entero mayor o igual a 0');
       return;
     }
     setIsSubmitting(true);

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
+import { AuthContext } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import EditSaleModal from '../components/EditSaleModal';
 
@@ -27,6 +28,8 @@ function getStatusBadge(status) {
 
 export default function SalesHistory() {
   const { sales, deleteSale, updateSaleStatus } = useGlobalData();
+  const { user } = useContext(AuthContext);
+  const canDeleteSales = user?.role === 'Admin';
   const [filterMode, setFilterMode] = useState('all');
   const [filterValue, setFilterValue] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,10 +62,14 @@ export default function SalesHistory() {
     return true;
   }).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este registro de venta?')) {
-      deleteSale(id);
-      toast.success('Venta eliminada del registro');
+      try {
+        await deleteSale(id);
+        toast.success('Venta eliminada del registro');
+      } catch (error) {
+        toast.error(error.message || 'No se pudo eliminar la venta. Inténtalo de nuevo.');
+      }
     }
   };
 
@@ -72,7 +79,7 @@ export default function SalesHistory() {
         await updateSaleStatus(id, 'Completado');
         toast.success('Venta de WhatsApp confirmada y stock descontado.');
       } catch (error) {
-        toast.error('Error al confirmar la venta.');
+        toast.error(error.message || 'No se pudo confirmar la venta. Inténtalo de nuevo.');
       }
     }
   };
@@ -87,7 +94,7 @@ export default function SalesHistory() {
       await updateSaleStatus(id, payload);
       toast.success('Venta actualizada correctamente');
     } catch (error) {
-      toast.error('Error al actualizar la venta');
+      toast.error(error.message || 'No se pudo actualizar la venta. Inténtalo de nuevo.');
       throw error;
     }
   };
@@ -236,11 +243,13 @@ export default function SalesHistory() {
                               title="Editar Venta">
                               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button onClick={() => handleDelete(sale.id || sale._id)}
-                              className="w-8 h-8 rounded-[8px] bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 transition-colors cursor-pointer"
-                              title="Eliminar Venta">
-                              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
-                            </button>
+                            {canDeleteSales && (
+                              <button onClick={() => handleDelete(sale.id || sale._id)}
+                                className="w-8 h-8 rounded-[8px] bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 transition-colors cursor-pointer"
+                                title="Eliminar Venta">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

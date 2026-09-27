@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { ADMIN_PREFIX } from '../../../config';
+import { motion, useReducedMotion } from 'framer-motion';
 
 function getRedirectUrl(role) {
   return role === 'Employee' ? ADMIN_PREFIX + '/vendedor' : ADMIN_PREFIX;
@@ -11,6 +12,7 @@ function getRedirectUrl(role) {
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
   const { register, handleSubmit, formState: { errors }, watch } = useForm({ mode: 'onTouched' });
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
@@ -57,23 +59,26 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0d0f] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-[#30b466]/5 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#1b4332]/20 rounded-full blur-[120px] pointer-events-none"></div>
+    <div className="min-h-screen bg-[#090d0b] flex items-center justify-center p-4 relative overflow-hidden font-sans sm:p-8">
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(48,180,102,0.12),transparent_48%),radial-gradient(ellipse_at_100%_100%,rgba(27,67,50,0.2),transparent_42%)]"></div>
+      <motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { x: [0, 24, 0], y: [0, -18, 0], opacity: [0.16, 0.28, 0.16], scale: [1, 1.08, 1] }} transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }} className="absolute -right-36 -top-44 h-[620px] w-[620px] rounded-full bg-[#30b466]/20 blur-[130px] pointer-events-none" />
+      <motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { x: [0, -18, 0], y: [0, 20, 0], opacity: [0.12, 0.22, 0.12], scale: [1.05, 1, 1.05] }} transition={{ duration: 17, repeat: Infinity, ease: 'easeInOut' }} className="absolute -bottom-52 -left-40 h-[640px] w-[640px] rounded-full bg-[#1b4332]/35 blur-[140px] pointer-events-none" />
+      <motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { rotate: 360 }} transition={{ duration: 90, repeat: Infinity, ease: 'linear' }} className="absolute -right-32 top-[12%] h-[430px] w-[430px] rounded-full border border-[#63d895]/[0.07] pointer-events-none" />
+      <motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { rotate: -360 }} transition={{ duration: 110, repeat: Infinity, ease: 'linear' }} className="absolute -right-16 top-[17%] h-[300px] w-[300px] rounded-full border border-[#63d895]/[0.06] pointer-events-none" />
       
-      <div className="w-full max-w-[420px] relative z-10">
+      <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.48 }} className="w-full max-w-[440px] relative z-10">
         <div className="text-center mb-8 flex flex-col items-center">
-          <div className="w-14 h-14 bg-[#161b1e] border border-white/5 rounded-[14px] flex items-center justify-center mb-4 shadow-[0_0_25px_rgba(0,0,0,0.5)]">
+          <motion.div animate={shouldReduceMotion ? undefined : { y: [0, -5, 0], boxShadow: ['0 0 22px rgba(48,180,102,0.08)', '0 0 34px rgba(48,180,102,0.2)', '0 0 22px rgba(48,180,102,0.08)'] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} className="w-14 h-14 bg-[#161b1e] border border-[#63d895]/15 rounded-2xl flex items-center justify-center mb-4">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" fill="#75e29f" />
               <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3L12 21Z" fill="#30b466" />
             </svg>
-          </div>
+          </motion.div>
           <h1 className="text-[24px] font-bold text-white tracking-tight">Pro Natural</h1>
           <p className="text-[#4ade80] text-[12px] font-bold tracking-[0.2em] uppercase mt-1">Portal Admin</p>
         </div>
 
-        <div className="bg-[#121619] border border-white/10 rounded-[16px] p-8 shadow-2xl backdrop-blur-xl">
+        <motion.div whileHover={shouldReduceMotion ? undefined : { y: -2 }} transition={{ duration: 0.2 }} className="bg-[#121715]/90 border border-white/[0.1] rounded-2xl p-6 sm:p-8 shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-xl">
           <h2 className="text-[20px] text-white font-semibold mb-6">
             {step === 1 ? 'Iniciar Sesión' : 'Cambiar Contraseña'}
           </h2>
@@ -179,14 +184,14 @@ export default function AdminLogin() {
               </button>
             </form>
           )}
-        </div>
+        </motion.div>
 
         {step === 1 && (
           <p className="text-center text-gray-500 text-[12px] mt-6">
             ¿Aún no tienes cuenta? <Link to={`${ADMIN_PREFIX}/register`} className="text-white hover:text-[#4ade80] font-medium transition-colors">Solicitar Acceso</Link>
           </p>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

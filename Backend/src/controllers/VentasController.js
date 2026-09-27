@@ -1,5 +1,6 @@
 import salesModel from "../models/Ventas.js";
 import productsModel from "../models/Productos.js";
+import mongoose from "mongoose";
 import { config } from "../../config.js";
 import { sendEmail } from "../utils/sendMailMailjet.js";
 
@@ -116,6 +117,15 @@ controladoresVentas.insertSale = async (req, res) => {
     // Extraer datos del cliente, lista de productos, método de pago, estado y notas
     const { customerId, products, paymentMethod, status, notes } = req.body;
 
+    if (customerId && !mongoose.Types.ObjectId.isValid(String(customerId))) {
+      return res.status(400).json({ message: "El cliente seleccionado no es válido." });
+    }
+
+    const allowedStatuses = ["Completado", "completado", "completed", "Pendiente WhatsApp"];
+    if (status !== undefined && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Selecciona un estado válido para la venta." });
+    }
+
     // Obtener el ID del empleado desde el objeto del usuario autenticado si existe
     const employeeId = req.user ? req.user.id : null;
 
@@ -134,6 +144,10 @@ controladoresVentas.insertSale = async (req, res) => {
       // Validar que el producto tenga un ID válido
       if (!item.productId) {
         return res.status(400).json({ message: `Producto inválido en la posición ${i + 1}.` });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(String(item.productId))) {
+        return res.status(400).json({ message: `El producto en la posición ${i + 1} no es válido.` });
       }
 
       // Convertir la cantidad a número

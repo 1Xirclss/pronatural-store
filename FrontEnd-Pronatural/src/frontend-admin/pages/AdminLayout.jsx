@@ -1,16 +1,11 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { ADMIN_PREFIX } from '../../config';
 import PageTransition from '../../components/common/PageTransition';
-const IconLogo = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" fill="#75e29f" />
-    <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3L12 21Z" fill="#30b466" />
-    <path d="M8 12C8 12 10.5 9 14 9C14 9 12.5 12 9 15L8 12Z" fill="#0d1f14" />
-  </svg>
-);
+import LoadingScreen from '../../components/common/LoadingScreen';
 const IconDashboard = () => (
   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -29,7 +24,7 @@ const IconSales = () => (
     <circle cx="17" cy="20" r="1.5" />
   </svg>
 );
-const IconSuppliers = () => (
+const IconSellers = () => (
   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
     <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -66,12 +61,13 @@ const IconSearch = () => (
 );
 function AdminSidebar({ isOpen, setIsOpen }) {
   const { user, logout } = useAuth();
+  const shouldReduceMotion = useReducedMotion();
   const role = user?.role || 'Admin';
   const navLink = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] transition-all font-medium ${
+    `flex items-center gap-3 border-l-2 px-4 py-2.5 rounded-r-lg text-[13px] transition-all duration-200 font-medium ${
       isActive
-        ? 'bg-[#1b4332] text-[#4ade80]'
-        : 'text-gray-400 hover:text-white'
+        ? 'border-[#4ade80] bg-[#1b4332]/80 text-[#4ade80] shadow-sm'
+        : 'border-transparent text-gray-400 hover:bg-white/[0.04] hover:text-white'
     }`;
   return (
     <>
@@ -82,15 +78,19 @@ function AdminSidebar({ isOpen, setIsOpen }) {
           onClick={() => setIsOpen(false)} 
         />
       )}
-      <aside className={`w-[240px] flex-shrink-0 bg-[#161b1e] border-r border-white/5 min-h-screen flex flex-col py-6 absolute md:relative z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <motion.aside
+        initial={shouldReduceMotion ? false : { x: -12, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className={`w-[240px] flex-shrink-0 bg-[#161b1e] border-r border-white/5 min-h-screen flex flex-col py-6 absolute md:relative z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
       <div className="px-6 mb-8 flex items-center gap-3">
-        <IconLogo />
         <div>
-          <p className="text-[#4ade80] text-[16px] font-bold leading-none tracking-tight">Pro Natural</p>
+          <p className="text-[#4ade80] text-[15px] font-extrabold leading-none tracking-[0.04em]">PRONATURAL</p>
           <p className="text-gray-500 text-[10px] mt-1 tracking-wider">Portal {role === 'Admin' ? 'Admin' : 'Vendedor'}</p>
         </div>
       </div>
-      <nav className="flex-1 px-4 space-y-1">
+      <nav className="flex-1 px-4 space-y-1.5">
         {role === 'Admin' && (
           <>
             <NavLink to={ADMIN_PREFIX} end className={navLink}>
@@ -109,7 +109,7 @@ function AdminSidebar({ isOpen, setIsOpen }) {
               <IconReports /><span>Historial de Ventas</span>
             </NavLink>
             <NavLink to={`${ADMIN_PREFIX}/vendedores`} className={navLink}>
-              <IconSuppliers /><span>Vendedores</span>
+              <IconSellers /><span>Vendedores</span>
             </NavLink>
             <NavLink to={`${ADMIN_PREFIX}/reportes`} className={navLink}>
               <IconReports /><span>Reportes</span>
@@ -168,7 +168,7 @@ function AdminSidebar({ isOpen, setIsOpen }) {
           <IconLogout /><span>Cerrar Sesión</span>
         </button>
       </div>
-    </aside>
+      </motion.aside>
     </>
   );
 }
@@ -176,6 +176,8 @@ function AdminTopbar({ toggleSidebar }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { products, sales, config } = useGlobalData();
+  const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
   const [showProfile, setShowProfile] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [notifFilter, setNotifFilter] = useState('todas');
@@ -274,20 +276,51 @@ function AdminTopbar({ toggleSidebar }) {
     return true;
   });
 
+  const routeTitles = [
+    [`${ADMIN_PREFIX}/ventas/registrar`, 'Nueva venta'],
+    [`${ADMIN_PREFIX}/ventas/historial`, 'Historial de ventas'],
+    [`${ADMIN_PREFIX}/vendedores`, 'Vendedores'],
+    [`${ADMIN_PREFIX}/inventario`, 'Inventario'],
+    [`${ADMIN_PREFIX}/categorias`, 'Categorías'],
+    [`${ADMIN_PREFIX}/clientes`, 'Clientes'],
+    [`${ADMIN_PREFIX}/catalogo`, 'Catálogo'],
+    [`${ADMIN_PREFIX}/reportes`, 'Reportes'],
+    [`${ADMIN_PREFIX}/resenas`, 'Reseñas'],
+    [`${ADMIN_PREFIX}/ajustes`, 'Ajustes'],
+    [`${ADMIN_PREFIX}/vendedor`, 'Panel de control'],
+    [ADMIN_PREFIX, 'Panel principal'],
+  ];
+  const pageTitle = routeTitles.find(([path]) => location.pathname === path || (path !== ADMIN_PREFIX && location.pathname.startsWith(`${path}/`)))?.[1] || 'Administración';
+
   return (
-    <header className="h-[72px] flex items-center justify-between md:justify-end px-4 md:px-8 flex-shrink-0 bg-[#0d1114] border-b border-white/5 relative z-40">
-      <button onClick={toggleSidebar} className="md:hidden text-gray-400 hover:text-white p-2">
+    <header className="h-[72px] flex items-center justify-between px-4 md:px-8 flex-shrink-0 bg-[#0d1114]/95 backdrop-blur-md border-b border-white/5 relative z-40">
+      <div className="flex items-center gap-3 min-w-0">
+      <button onClick={toggleSidebar} aria-label="Abrir menú de administración" className="md:hidden text-gray-400 hover:text-white hover:bg-white/5 p-2 rounded-lg transition-colors">
         <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       </button>
+      <motion.div
+        key={location.pathname}
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+        aria-live="polite"
+        className="min-w-0"
+      >
+        <p className="text-white text-[13px] sm:text-[14px] font-semibold truncate">{pageTitle}</p>
+        <p className="text-[#4ade80] text-[9px] font-bold tracking-[0.16em] uppercase mt-0.5">ProNatural · Panel de gestión</p>
+      </motion.div>
+      </div>
       
       <div className="flex items-center gap-4 md:gap-6">
         {/* Notificaciones */}
         <div className="relative">
           <button
             onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }}
-            className="relative p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+            aria-label={unreadCount ? `Notificaciones, ${unreadCount} sin leer` : 'Notificaciones'}
+            aria-expanded={showNotif}
+            className="relative p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4ade80]"
             title="Notificaciones"
           >
             <IconBell />
@@ -299,104 +332,127 @@ function AdminTopbar({ toggleSidebar }) {
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-[#161b1e] border border-white/10 rounded-[14px] shadow-2xl z-50 overflow-hidden">
-              <div className="p-4 border-b border-white/10 bg-[#0d1114] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-white text-[14px] font-semibold">Notificaciones</h3>
+            <motion.section
+              initial={shouldReduceMotion ? false : { opacity: 0, y: -8, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+              aria-label="Centro de notificaciones"
+              className="fixed inset-x-3 top-[76px] z-50 flex max-h-[min(620px,calc(100dvh-92px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111719] shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-3 sm:w-[410px] sm:max-h-[min(620px,calc(100dvh-110px))]"
+            >
+              <div className="relative overflow-hidden border-b border-white/[0.07] bg-[radial-gradient(ellipse_at_top_right,_rgba(48,180,102,0.17),_transparent_58%)] px-5 pb-4 pt-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-[16px] font-semibold tracking-tight text-white">Notificaciones</h3>
+                      <span className="rounded-full border border-[#30b466]/20 bg-[#30b466]/15 px-2.5 py-1 text-[10px] font-bold text-[#65e894]">
+                        {unreadCount ? `${unreadCount} nuevas` : 'Al día'}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[12px] text-gray-400">
+                      {notifications.length ? `${notifications.length} avisos recientes` : 'Mantente al tanto de la actividad'}
+                    </p>
+                  </div>
                   {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 text-[11px] font-bold bg-[#1b4332] text-[#4ade80] rounded-full">
-                      {unreadCount} nuevas
-                    </span>
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="min-h-9 rounded-lg px-2 text-[11px] font-semibold text-[#65e894] transition-colors hover:bg-[#30b466]/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4ade80]"
+                    >
+                      Marcar todo leído
+                    </button>
                   )}
                 </div>
-                {unreadCount > 0 && (
+              </div>
+
+              <div role="tablist" aria-label="Filtrar notificaciones" className="flex gap-1 border-b border-white/[0.07] bg-[#131a1c] p-2">
+                {[
+                  { id: 'todas', label: 'Todas', count: notifications.length },
+                  { id: 'alertas', label: 'Alertas', count: notifications.filter((notification) => notification.type === 'alert').length },
+                  { id: 'ventas', label: 'Ventas', count: notifications.filter((notification) => notification.type === 'sale').length },
+                ].map((tab) => (
                   <button
-                    onClick={markAllAsRead}
-                    className="text-[11px] text-[#4ade80] hover:underline font-medium cursor-pointer"
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={notifFilter === tab.id}
+                    onClick={() => setNotifFilter(tab.id)}
+                    className={`min-h-10 flex-1 rounded-lg px-2 text-[11px] font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4ade80] ${notifFilter === tab.id ? 'bg-[#1b4332] text-[#6cf098] shadow-inner shadow-black/10' : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-100'}`}
                   >
-                    Marcar todas leídas
+                    {tab.label}<span className={`ml-1.5 ${notifFilter === tab.id ? 'text-[#9af4b7]' : 'text-gray-500'}`}>{tab.count}</span>
                   </button>
-                )}
+                ))}
               </div>
 
-              <div className="flex border-b border-white/5 bg-[#121619] p-1 gap-1 text-[12px]">
-                <button
-                  onClick={() => setNotifFilter('todas')}
-                  className={`flex-1 py-1.5 rounded-[6px] font-medium transition-colors cursor-pointer ${notifFilter === 'todas' ? 'bg-[#1b4332] text-[#4ade80]' : 'text-gray-400 hover:text-white'}`}
-                >
-                  Todas ({notifications.length})
-                </button>
-                <button
-                  onClick={() => setNotifFilter('alertas')}
-                  className={`flex-1 py-1.5 rounded-[6px] font-medium transition-colors cursor-pointer ${notifFilter === 'alertas' ? 'bg-[#1b4332] text-[#4ade80]' : 'text-gray-400 hover:text-white'}`}
-                >
-                  Alertas ({notifications.filter(n => n.type === 'alert').length})
-                </button>
-                <button
-                  onClick={() => setNotifFilter('ventas')}
-                  className={`flex-1 py-1.5 rounded-[6px] font-medium transition-colors cursor-pointer ${notifFilter === 'ventas' ? 'bg-[#1b4332] text-[#4ade80]' : 'text-gray-400 hover:text-white'}`}
-                >
-                  Ventas ({notifications.filter(n => n.type === 'sale').length})
-                </button>
-              </div>
-
-              <div className="max-h-80 overflow-y-auto divide-y divide-white/5 scrollbar-thin">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin" aria-live="polite">
                 {!portalEnabled ? (
-                  <div className="p-6 text-center text-gray-400 text-[13px]">
-                    <p>🔕 Notificaciones del portal desactivadas.</p>
-                    <p className="text-[11px] text-gray-500 mt-1">Puedes activarlas en Ajustes del Sistema.</p>
+                  <div className="px-6 py-12 text-center">
+                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] text-gray-400"><IconBell /></span>
+                    <p className="mt-4 text-[13px] font-semibold text-gray-200">Avisos desactivados</p>
+                    <p className="mx-auto mt-1 max-w-[250px] text-[12px] leading-relaxed text-gray-500">Puedes volver a activarlos desde Ajustes del Sistema.</p>
                   </div>
                 ) : filteredNotifs.length > 0 ? (
-                  filteredNotifs.map(n => {
-                    const isRead = readNotifs.includes(n.id);
-                    return (
-                      <div
-                        key={n.id}
-                        onClick={() => {
-                          markAsRead(n.id);
-                          setShowNotif(false);
-                          if (n.link) navigate(n.link);
-                        }}
-                        className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer ${isRead ? 'bg-transparent opacity-60 hover:opacity-100 hover:bg-white/5' : 'bg-[#1b4332]/20 hover:bg-[#1b4332]/30'}`}
-                      >
-                        <div className="shrink-0 mt-0.5">
-                          {n.severity === 'critical' && (
-                            <span className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-[14px]">🚫</span>
-                          )}
-                          {n.severity === 'warning' && (
-                            <span className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[14px]">⚠️</span>
-                          )}
-                          {n.severity === 'info' && (
-                            <span className="w-8 h-8 rounded-full bg-[#30b466]/20 text-[#4ade80] flex items-center justify-center text-[14px]">🛍️</span>
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className={`text-[13px] truncate ${isRead ? 'text-gray-300 font-normal' : 'text-white font-semibold'}`}>
-                              {n.title}
-                            </p>
-                            {!isRead && <span className="w-2 h-2 rounded-full bg-[#30b466] shrink-0"></span>}
-                          </div>
-                          <p className="text-gray-400 text-[12px] mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-gray-500 text-[10px] mt-1">{n.time}</p>
-                        </div>
-                      </div>
-                    );
-                  })
+                  <ul className="divide-y divide-white/[0.055]">
+                    {filteredNotifs.map((n, index) => {
+                      const isRead = readNotifs.includes(n.id);
+                      const isAlert = n.type === 'alert';
+                      const isCritical = n.severity === 'critical';
+                      return (
+                        <motion.li
+                          key={n.id}
+                          initial={shouldReduceMotion ? false : { opacity: 0, y: 7 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: shouldReduceMotion ? 0 : 0.18, delay: shouldReduceMotion ? 0 : Math.min(index * 0.025, 0.15) }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              markAsRead(n.id);
+                              setShowNotif(false);
+                              if (n.link) navigate(n.link);
+                            }}
+                            className={`group flex w-full items-start gap-3.5 px-5 py-4 text-left transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#4ade80] ${isRead ? 'bg-transparent hover:bg-white/[0.035]' : 'bg-[#30b466]/[0.035] hover:bg-[#30b466]/[0.075]'}`}
+                          >
+                            <span className={`relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isCritical ? 'border-rose-400/15 bg-rose-400/10 text-rose-300' : isAlert ? 'border-amber-300/15 bg-amber-300/10 text-amber-200' : 'border-[#30b466]/15 bg-[#30b466]/10 text-[#72e99a]'}`} aria-hidden="true">
+                              {isCritical ? (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+                              ) : isAlert ? (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 8v4m0 4h.01M4.9 19h14.2a2 2 0 0 0 1.8-2.9L13.8 4a2 2 0 0 0-3.6 0l-7.1 12.1A2 2 0 0 0 4.9 19Z" /></svg>
+                              ) : (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 7h18v13H3zM3 7l2-3h14l2 3M8 11h8M8 15h5" /></svg>
+                              )}
+                              {!isRead && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#111719] bg-[#4ade80]" />}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-start justify-between gap-2">
+                                <span className={`line-clamp-2 text-[12px] leading-snug ${isRead ? 'font-medium text-gray-300' : 'font-semibold text-white'}`}>{n.title}</span>
+                                <svg aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-600 transition-all group-hover:translate-x-0.5 group-hover:text-[#72e99a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+                              </span>
+                              <span className="mt-1 block line-clamp-2 text-[11px] leading-relaxed text-gray-400">{n.message}</span>
+                              <span className="mt-2 block text-[10px] font-medium tracking-wide text-gray-500">{n.time}</span>
+                            </span>
+                          </button>
+                        </motion.li>
+                      );
+                    })}
+                  </ul>
                 ) : (
-                  <div className="p-8 text-center text-gray-500 text-[13px]">
-                    No hay notificaciones en esta sección
+                  <div className="px-6 py-12 text-center">
+                    <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.025] text-gray-500"><IconBell /></span>
+                    <p className="mt-4 text-[13px] font-semibold text-gray-200">Todo tranquilo</p>
+                    <p className="mt-1 text-[12px] text-gray-500">No hay avisos en esta categoría.</p>
                   </div>
                 )}
               </div>
-            </div>
+              <div className="flex items-center justify-between border-t border-white/[0.07] bg-[#0e1416] px-5 py-3">
+                <span className="text-[10px] font-medium tracking-wide text-gray-500">ACTIVIDAD RECIENTE</span>
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[#6ad88e]"><span className="h-1.5 w-1.5 rounded-full bg-[#4ade80]" />ACTUALIZADO</span>
+              </div>
+            </motion.section>
           )}
         </div>
-
         {/* Perfil */}
         <div className="relative">
-          <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }} className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1 sm:pr-3 rounded-full transition-colors">
+          <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }} aria-expanded={showProfile} aria-label={`Perfil de ${user?.name || 'usuario'}`} className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1 sm:pr-3 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4ade80]">
             <div className="w-8 h-8 bg-[#1b4332] text-[#4ade80] rounded-full flex items-center justify-center text-[13px] font-bold shrink-0">
               {(user?.name || 'A')[0].toUpperCase()}
             </div>
@@ -406,7 +462,7 @@ function AdminTopbar({ toggleSidebar }) {
             </div>
           </button>
           {showProfile && (
-            <div className="absolute right-0 mt-2 w-64 bg-[#161b1e] border border-white/10 rounded-[10px] shadow-2xl z-50 overflow-hidden">
+            <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: -5, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.15 }} className="absolute right-0 mt-2 w-64 bg-[#161b1e] border border-white/10 rounded-[10px] shadow-2xl z-50 overflow-hidden">
               <div className="p-4 border-b border-white/10 bg-[#0d1114] flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#1b4332] text-[#4ade80] rounded-full flex items-center justify-center text-[16px] font-bold flex-shrink-0">
                   {(user?.name || 'A')[0].toUpperCase()}
@@ -424,7 +480,7 @@ function AdminTopbar({ toggleSidebar }) {
                   <IconLogout /> Cerrar Sesión
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>
@@ -434,18 +490,21 @@ function AdminTopbar({ toggleSidebar }) {
 export default function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
+  const { isLoading } = useGlobalData();
 
   return (
     <div className="flex h-screen bg-[#0d1114] font-sans overflow-hidden">
       <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden relative bg-[radial-gradient(ellipse_at_top_right,_rgba(48,180,102,0.055),_transparent_38%)]">
         <AdminTopbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto px-4 pt-5 pb-24 md:px-8 md:pt-8 md:pb-28 custom-scrollbar">
+          <div className="admin-interface-motion h-full">
           <PageTransition>
-            <Outlet />
+            {isLoading ? <LoadingScreen label="Cargando panel" /> : <Outlet />}
           </PageTransition>
+          </div>
         </main>
-        <footer className="hidden md:flex absolute bottom-0 left-0 right-0 px-8 py-4 items-center justify-between pointer-events-none">
+        <footer className="hidden md:flex absolute bottom-0 left-0 right-0 px-8 py-4 items-center justify-between bg-gradient-to-t from-[#0d1114] via-[#0d1114]/95 to-transparent pointer-events-none">
           <p className="text-[#4ade80] text-[11px] font-bold tracking-wider pointer-events-auto">Pro Natural</p>
           <p className="text-gray-600 text-[11px] pointer-events-auto">© 2024 Pro Natural. Pasión por la naturaleza.</p>
           <div className="flex gap-4 pointer-events-auto">

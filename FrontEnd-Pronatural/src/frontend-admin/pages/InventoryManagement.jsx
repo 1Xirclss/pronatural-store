@@ -119,7 +119,7 @@ export default function InventoryManagement() {
       toast.success(`Stock actualizado: +${added} unidades agregadas a "${reponerItem.name}"`);
       setReponerItem(null);
     } catch (err) {
-      toast.error('Error al actualizar el stock');
+      toast.error(err.message || 'No se pudo actualizar el inventario. Inténtalo de nuevo.');
     } finally {
       setIsSubmittingStock(false);
     }
@@ -162,7 +162,7 @@ export default function InventoryManagement() {
       toast.success(`Producto "${editFormData.name}" actualizado exitosamente`);
       setEditItem(null);
     } catch (err) {
-      toast.error('Error al actualizar el producto');
+      toast.error(err.message || 'No se pudo actualizar el producto. Inténtalo de nuevo.');
     } finally {
       setIsSubmittingEdit(false);
     }
@@ -221,7 +221,7 @@ export default function InventoryManagement() {
         <MetricHorizontal 
           icon={<svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>}
           bgClass="bg-[#3e3427]" textClass="text-[#d4a373]"
-          label="Categorías Activas" value={String(categories.length || 3)}
+          label="Categorías Activas" value={String(categories.length)}
         />
       </div>
 

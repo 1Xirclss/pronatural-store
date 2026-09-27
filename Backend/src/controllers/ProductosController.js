@@ -23,36 +23,54 @@ const controladoresProductos = {};
 // Obtener el producto más vendido basado en ventas completadas/enviadas/entregadas
 controladoresProductos.getMostSoldProduct = async (req, res) => {
   try {
-    const estadosValidos = [
-      'Completado', 'completado', 'completed',
-      'Enviado', 'enviado',
-      'Entregado', 'entregado',
-      'Pendiente WhatsApp'
-    ];
+    res.set('Cache-Control', 'no-store');
+    const estadosValidos = ['completado', 'completed', 'enviado', 'entregado'];
 
     // Agregar ventas sumando cantidades por producto
     // Convertimos productId a string para manejar tanto ObjectId como string
     const topProductos = await ventasModel.aggregate([
-      { $match: { status: { $in: estadosValidos } } },
+      {
+        $addFields: {
+          estadoNormalizado: {
+            $toLower: { $trim: { input: { $ifNull: ['$status', ''] } } }
+          }
+        }
+      },
+      { $match: { estadoNormalizado: { $in: estadosValidos } } },
       { $unwind: '$products' },
       {
         $group: {
-          _id: { $toString: '$products.productId' },
-          totalVendido: { $sum: '$products.quantity' }
+          _id: '$products.productId',
+          totalVendido: { $sum: '$products.quantity' },
+          ventaMasReciente: { $max: '$createdAt' }
         }
       },
-      { $sort: { totalVendido: -1 } },
-      { $limit: 1 }
+      {
+        $lookup: {
+          from: 'Productos',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'producto'
+        }
+      },
+      { $match: { 'producto.0': { $exists: true } } },
+      { $sort: { totalVendido: -1, ventaMasReciente: -1, _id: 1 } },
+      { $limit: 1 },
+      { $project: { totalVendido: 1, producto: { $arrayElemAt: ['$producto', 0] } } }
     ]);
 
-    let producto = null;
+    if (topProductos.length === 0 || !topProductos[0].producto) {
+      return res.status(404).json({ message: 'Aún no hay ventas confirmadas para destacar un producto.' });
+    }
+
+    let producto = topProductos[0].producto;
     if (topProductos.length > 0 && topProductos[0]._id) {
       // Intentar buscar por ObjectId
       const mongoose = (await import('mongoose')).default;
       let idToFind = topProductos[0]._id;
       try {
         if (mongoose.Types.ObjectId.isValid(idToFind)) {
-          producto = await productsModel.findById(idToFind);
+          producto = await productsModel.findById(idToFind) || producto;
         }
       } catch(e) {
         // ignorar error de cast
@@ -68,7 +86,7 @@ controladoresProductos.getMostSoldProduct = async (req, res) => {
       return res.status(404).json({ message: 'No hay productos disponibles.' });
     }
 
-    const totalVendido = topProductos.length > 0 ? topProductos[0].totalVendido : 0;
+    const totalVendido = topProductos[0].totalVendido;
 
     return res.status(200).json({
       id: producto._id,
@@ -161,8 +179,12 @@ controladoresProductos.createProduct = async (req, res) => {
     const publicId = req.file ? req.file.filename : null;
 
     // Validar que el nombre del producto no esté vacío
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ message: "El nombre del producto es obligatorio." });
+    }
+
+    if ((desc !== undefined && typeof desc !== 'string') || (description !== undefined && typeof description !== 'string')) {
+      return res.status(400).json({ message: "La descripción del producto no es válida." });
     }
 
     // Convertir el precio a formato numérico
@@ -191,13 +213,23 @@ controladoresProductos.createProduct = async (req, res) => {
       try {
         parsedSpecs = JSON.parse(specs);
       } catch (e) {
-        parsedSpecs = {};
+        return res.status(400).json({ message: "Las especificaciones del producto no tienen un formato válido." });
       }
     } else if (typeof specs === 'object' && specs !== null) {
       parsedSpecs = specs;
     }
 
-    const skuGen = req.body.sku || `PN-${(category || 'GEN').substring(0,3).toUpperCase()}-${String(Date.now()).slice(-4)}`;
+    if (Array.isArray(parsedSpecs) || (specs !== undefined && specs !== null && typeof parsedSpecs !== 'object')) {
+      return res.status(400).json({ message: "Las especificaciones del producto deben ser un objeto válido." });
+    }
+
+    if (category !== undefined && typeof category !== 'string') {
+      return res.status(400).json({ message: "Selecciona una categoría válida." });
+    }
+
+    const categoryName = category?.trim() || 'General';
+
+    const skuGen = req.body.sku || `PN-${categoryName.substring(0,3).toUpperCase()}-${String(Date.now()).slice(-4)}`;
 
     // Crear la instancia del producto con sus propiedades
     const nuevoProducto = new productsModel({
@@ -205,7 +237,7 @@ controladoresProductos.createProduct = async (req, res) => {
       descripcion: (desc || description || '').trim(),
       precio: parsedPrice,
       stock: parsedStock,
-      idCategoria: category || 'General',
+      idCategoria: categoryName,
       imagenProducto: imgPath ? [imgPath] : [],
       public_id: publicId,
       sku: skuGen,
@@ -243,6 +275,32 @@ controladoresProductos.updateProduct = async (req, res) => {
     // Tomar el ID desde los parámetros del endpoint
     const { id } = req.params;
     const { name, desc, description, price, stock, category, specs } = req.body;
+
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+      return res.status(400).json({ message: "El nombre del producto no puede estar vacío." });
+    }
+
+    if ((desc !== undefined && typeof desc !== 'string') || (description !== undefined && typeof description !== 'string')) {
+      return res.status(400).json({ message: "La descripción del producto no es válida." });
+    }
+
+    if (category !== undefined && (typeof category !== 'string' || !category.trim())) {
+      return res.status(400).json({ message: "Selecciona una categoría válida." });
+    }
+
+    if (specs !== undefined && specs !== null) {
+      let parsedSpecs = specs;
+      if (typeof specs === 'string') {
+        try {
+          parsedSpecs = JSON.parse(specs);
+        } catch (error) {
+          return res.status(400).json({ message: "Las especificaciones del producto no tienen un formato válido." });
+        }
+      }
+      if (typeof parsedSpecs !== 'object' || Array.isArray(parsedSpecs)) {
+        return res.status(400).json({ message: "Las especificaciones del producto deben ser un objeto válido." });
+      }
+    }
 
     // Verificar si el producto a modificar existe en la base de datos
     const existente = await productsModel.findById(id);

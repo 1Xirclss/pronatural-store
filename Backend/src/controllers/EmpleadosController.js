@@ -75,28 +75,57 @@ empleadosController.createEmpleado = async (req, res) => {
     let { name, lastName, role, phone, email, password, salary, birthdate } = req.body;
     
     // Validar que el nombre no venga vacío
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ message: "El nombre del empleado es obligatorio." });
     }
 
+    if (typeof lastName !== 'string' || !lastName.trim()) {
+      return res.status(400).json({ message: "El apellido del empleado es obligatorio." });
+    }
+
     // Validar que el correo no esté vacío
-    if (!email || !email.trim()) {
+    if (typeof email !== 'string' || !email.trim()) {
       return res.status(400).json({ message: "El correo electrónico es obligatorio." });
     }
 
     // Validar que la contraseña sea provista
-    if (!password || !password.trim()) {
+    if (typeof password !== 'string' || !password.trim()) {
       return res.status(400).json({ message: "La contraseña es obligatoria." });
+    }
+
+    if (password.trim().length < 6) {
+      return res.status(400).json({ message: "La contraseña debe tener al menos 6 caracteres." });
     }
 
     // Limpiar espacios en blanco de los textos
     name = name.trim();
-    lastName = lastName ? lastName.trim() : '';
+    lastName = lastName.trim();
     email = email.trim().toLowerCase();
+    if (phone !== undefined && typeof phone !== 'string') {
+      return res.status(400).json({ message: "El teléfono debe ser texto válido." });
+    }
     phone = phone ? phone.trim() : '';
 
     // Convertir y validar que el salario no sea negativo
-    const numSalary = Number(salary) >= 0 ? Number(salary) : 0;
+    const numSalary = Number(salary);
+    if (salary === undefined || salary === '' || !Number.isFinite(numSalary) || numSalary < 0) {
+      return res.status(400).json({ message: "El salario debe ser un número válido mayor o igual a cero." });
+    }
+
+    if (phone) {
+      const digits = String(phone).replace(/\D/g, '');
+      const nationalDigits = digits.startsWith('503') && digits.length === 11 ? digits.slice(3) : digits;
+      if (nationalDigits.length !== 8) {
+        return res.status(400).json({ message: "El teléfono debe contener 8 dígitos de El Salvador." });
+      }
+    }
+
+    if (birthdate) {
+      const parsedBirthdate = new Date(birthdate);
+      if (Number.isNaN(parsedBirthdate.getTime()) || parsedBirthdate > new Date()) {
+        return res.status(400).json({ message: "La fecha de nacimiento no es válida." });
+      }
+    }
 
     // Expresión regular para verificar formato de correo
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -170,12 +199,20 @@ empleadosController.updateEmpleado = async (req, res) => {
     }
 
     // Si se envía correo, validar su formato y que no esté duplicado
-    if (email) {
-      email = email.trim().toLowerCase();
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+      return res.status(400).json({ message: "El nombre no puede estar vacío." });
+    }
+
+    if (lastName !== undefined && (typeof lastName !== 'string' || !lastName.trim())) {
+      return res.status(400).json({ message: "El apellido no puede estar vacío." });
+    }
+
+    if (email !== undefined) {
+      email = typeof email === 'string' ? email.trim().toLowerCase() : '';
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       // Validar la estructura del email
-      if (!emailRegex.test(email)) {
+      if (!email || !emailRegex.test(email)) {
         return res.status(400).json({ message: "El formato de correo no es válido." });
       }
 
@@ -186,6 +223,29 @@ empleadosController.updateEmpleado = async (req, res) => {
       }
     }
 
+    if (password !== undefined && typeof password !== 'string') {
+      return res.status(400).json({ message: "La contraseña no es válida." });
+    }
+
+    if (salary !== undefined && (salary === '' || !Number.isFinite(Number(salary)) || Number(salary) < 0)) {
+      return res.status(400).json({ message: "El salario debe ser un número válido mayor o igual a cero." });
+    }
+
+    if (phone !== undefined && String(phone).trim()) {
+      const digits = String(phone).replace(/\D/g, '');
+      const nationalDigits = digits.startsWith('503') && digits.length === 11 ? digits.slice(3) : digits;
+      if (nationalDigits.length !== 8) {
+        return res.status(400).json({ message: "El teléfono debe contener 8 dígitos de El Salvador." });
+      }
+    }
+
+    if (birthdate) {
+      const parsedBirthdate = new Date(birthdate);
+      if (Number.isNaN(parsedBirthdate.getTime()) || parsedBirthdate > new Date()) {
+        return res.status(400).json({ message: "La fecha de nacimiento no es válida." });
+      }
+    }
+
     // Construir el objeto de actualización con los datos recibidos
     const updateData = {
       ...(name && { nombre: name.trim() }),
@@ -193,12 +253,15 @@ empleadosController.updateEmpleado = async (req, res) => {
       ...(role && { cargo: role }),
       ...(phone !== undefined && { telefono: phone.trim() }),
       ...(email && { correo: email }),
-      ...(salary !== undefined && { salario: Number(salary) >= 0 ? Number(salary) : 0 }),
+      ...(salary !== undefined && { salario: Number(salary) }),
       ...(birthdate !== undefined && { fechaNacimiento: birthdate ? new Date(birthdate) : null })
     };
 
     // Si se envió una nueva contraseña, encriptarla si no viene encriptada previamente
     if (password && password.trim() !== "") {
+      if (password.trim().length < 6) {
+        return res.status(400).json({ message: "La contraseña debe tener al menos 6 caracteres." });
+      }
       if (!password.startsWith('$2')) {
         updateData.contraseña = await bcrypt.hash(password.trim(), 10);
       }

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ADMIN_PREFIX } from '../../config';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -14,8 +15,18 @@ const getStatusStyle = (status) => {
   }
 };
 function MetricCard({ icon, label, value, trend, trendUp, isAlert }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div className={`bg-[#161b1e] border ${isAlert ? 'border-red-900/50' : 'border-white/5'} rounded-[14px] p-5 flex flex-col gap-4 relative overflow-hidden`}>
+    <motion.article
+      initial={shouldReduceMotion ? false : undefined}
+      variants={{
+        hidden: { opacity: 0, y: 8 },
+        visible: { opacity: 1, y: 0 },
+      }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className={`bg-[#161b1e] border ${isAlert ? 'border-red-900/50' : 'border-white/5'} rounded-[14px] p-5 flex flex-col gap-4 relative overflow-hidden`}
+    >
       <div className="flex justify-between items-start relative z-10">
         <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${isAlert ? 'bg-red-950/50 text-red-400' : 'bg-[#1b4332]/30 text-[#4ade80]'}`}>
           {icon}
@@ -42,11 +53,12 @@ function MetricCard({ icon, label, value, trend, trendUp, isAlert }) {
         <p className="text-gray-400 text-[12px] mb-1">{label}</p>
         <p className={`text-[28px] font-bold tracking-tight ${isAlert ? 'text-red-300' : 'text-white'}`}>{value}</p>
       </div>
-    </div>
+    </motion.article>
   );
 }
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
   const { sales, products, stats } = useGlobalData();
   const recentOrders = sales.slice(0, 5);
   const lowStockThreshold = 15;
@@ -86,7 +98,15 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: shouldReduceMotion ? 0 : 0.055 } },
+        }}
+        initial={shouldReduceMotion ? false : 'hidden'}
+        animate="visible"
+      >
         <MetricCard
           icon={<svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>}
           label="Ventas Totales"
@@ -114,7 +134,7 @@ export default function AdminDashboard() {
           value={lowStockItems.length}
           isAlert={lowStockItems.length > 0}
         />
-      </div>
+      </motion.div>
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           <div className="bg-[#161b1e] rounded-[14px] p-6">
@@ -191,7 +211,7 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-1 text-[12px]">
-                  <span className="text-gray-300">Meta Diaria (${(stats?.metas?.diaria || 150).toLocaleString()})</span>
+                  <span className="text-gray-300">Meta Diaria (${(stats?.metas?.diaria ?? 150).toLocaleString()})</span>
                   <span className="text-[#4ade80] font-bold">${(stats?.todayRevenue || 0).toFixed(2)} ({Math.min(100, Math.round(((stats?.todayRevenue || 0) / (stats?.metas?.diaria || 150)) * 100))}%)</span>
                 </div>
                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
@@ -200,7 +220,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1 text-[12px]">
-                  <span className="text-gray-300">Meta Semanal (${(stats?.metas?.semanal || 1050).toLocaleString()})</span>
+                  <span className="text-gray-300">Meta Semanal (${(stats?.metas?.semanal ?? 1050).toLocaleString()})</span>
                   <span className="text-[#30b466] font-bold">${(stats?.weekRevenue || 0).toFixed(2)} ({Math.min(100, Math.round(((stats?.weekRevenue || 0) / (stats?.metas?.semanal || 1050)) * 100))}%)</span>
                 </div>
                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
@@ -209,7 +229,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1 text-[12px]">
-                  <span className="text-gray-300">Meta Mensual (${(stats?.metas?.mensual || 4500).toLocaleString()})</span>
+                  <span className="text-gray-300">Meta Mensual (${(stats?.metas?.mensual ?? 4500).toLocaleString()})</span>
                   <span className="text-[#75e29f] font-bold">${(stats?.monthRevenue || 0).toFixed(2)} ({Math.min(100, Math.round(((stats?.monthRevenue || 0) / (stats?.metas?.mensual || 4500)) * 100))}%)</span>
                 </div>
                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">

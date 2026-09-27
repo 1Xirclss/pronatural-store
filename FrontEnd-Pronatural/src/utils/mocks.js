@@ -111,30 +111,6 @@ export const mockSales = [
     vendor: 'Alexander Vance'
   }
 ];
-export const mockSuppliers = [
-  {
-    id: 'P-001',
-    name: 'Apicultores Asociados de Sonsonate',
-    contactName: 'Carlos Mendoza',
-    phone: '+503 7123-4567',
-    email: 'carlos.mendoza@apicultores.sv',
-    history: [
-      { id: 'O-5001', date: '2026-05-12', total: 450.00, status: 'Completado' },
-      { id: 'O-5012', date: '2026-06-18', total: 600.00, status: 'Completado' }
-    ]
-  },
-  {
-    id: 'P-002',
-    name: 'Cooperativa Agrícola Chalatenango',
-    contactName: 'María Santos',
-    phone: '+503 7890-1234',
-    email: 'maria.santos@coopchala.sv',
-    history: [
-      { id: 'O-5003', date: '2026-04-05', total: 960.00, status: 'Completado' },
-      { id: 'O-5009', date: '2026-06-22', total: 320.00, status: 'Completado' }
-    ]
-  }
-];
 export const mockReports = {
   summary: {
     totalSalesToday: 79.00,

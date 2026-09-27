@@ -1,0 +1,4 @@
+# Configuración local de herramientas de asistencia; no forma parte del proyecto.
+/.agents/
+/.codex/
+/skills-lock.json

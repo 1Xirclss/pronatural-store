@@ -10,8 +10,8 @@ const router = express.Router();
 // Ruta raíz de ventas /
 router
   .route("/")
-  // GET: Obtener todas las ventas registradas (requiere rol de Admin)
-  .get(validateAuthCookie(["Admin"]), salesController.getSales)
+  // GET: El administrador y el personal autorizado consultan el historial de ventas.
+  .get(validateAuthCookie(["Admin", "Employee"]), salesController.getSales)
   // POST: Registrar una nueva venta
   .post(salesController.insertSale);
 
@@ -32,8 +32,8 @@ router
   .route("/:id")
   // GET: Consultar detalle de la venta (Admin o Employee)
   .get(validateAuthCookie(["Admin", "Employee"]), salesController.getSaleById)
-  // PUT: Actualizar estado o notas de la venta (Admin)
-  .put(validateAuthCookie(["Admin"]), salesController.updateSaleStatus)
+  // PUT: El administrador y el personal autorizado actualizan el estado de ventas.
+  .put(validateAuthCookie(["Admin", "Employee"]), salesController.updateSaleStatus)
   // DELETE: Eliminar un registro de venta (Admin)
   .delete(validateAuthCookie(["Admin"]), salesController.deleteSale);
 
