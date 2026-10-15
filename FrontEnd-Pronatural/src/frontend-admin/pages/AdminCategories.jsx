@@ -87,14 +87,14 @@ export default function AdminCategories() {
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
           </span>
           <div>
-            <h2 className="text-base font-semibold text-white">{editingId ? 'Editar categor&iacute;a' : 'Nueva categor&iacute;a'}</h2>
+            <h2 className="text-base font-semibold text-white">{editingId ? 'Editar categoría' : 'Nueva categoría'}</h2>
             <p className="mt-0.5 text-xs text-slate-500">Usa un nombre breve y f&aacute;cil de reconocer.</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
-            <label htmlFor="category-name" className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Nombre de la categor&iacute;a</label>
+            <label htmlFor="category-name" className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Nombre de la categoría</label>
             <input
               id="category-name"
               type="text"
@@ -111,7 +111,7 @@ export default function AdminCategories() {
               </button>
             )}
             <button type="submit" className="rounded-xl bg-[#30b466] px-5 py-3 text-sm font-bold text-[#07130c] shadow-[0_8px_24px_rgba(48,180,102,0.16)] transition hover:-translate-y-0.5 hover:bg-[#3ac574] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#63d895]">
-              {editingId ? 'Guardar cambios' : 'Crear categor&iacute;a'}
+              {editingId ? 'Guardar cambios' : 'Crear categoría'}
             </button>
           </div>
         </form>
