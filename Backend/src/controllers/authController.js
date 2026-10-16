@@ -105,17 +105,22 @@ authController.verifyCode = async (req, res) => {
 // Inicio de sesión general (Admin, Empleado o Cliente)
 authController.login = async (req, res) => {
   try {
-    let { email, password } = req.body;
+    let { email, password, role: requestedRole } = req.body;
     email = email.toLowerCase().trim();
 
     const emailRegex = new RegExp("^" + email + "$", "i");
 
-    let user = await usersModel.findOne({ correo: emailRegex });
+    let user = requestedRole === "Customer"
+      ? (await clientesModel.findOne({ email: emailRegex })) ||
+        (await clientesModel.findOne({ correo: emailRegex }))
+      : await usersModel.findOne({ correo: emailRegex });
     let role = "Admin";
-    let isCliente = false;
+    let isCliente = requestedRole === "Customer" && !!user;
     let isEmpleado = false;
 
-    if (!user) {
+    if (isCliente) role = "Customer";
+
+    if (!user && requestedRole !== "Customer") {
       user = await empleadosModel.findOne({ correo: emailRegex });
       if (user) {
         role = "Employee";
@@ -123,7 +128,7 @@ authController.login = async (req, res) => {
       }
     }
 
-    if (!user) {
+    if (!user && requestedRole !== "Customer") {
       user =
         (await clientesModel.findOne({ email: emailRegex })) ||
         (await clientesModel.findOne({ correo: emailRegex }));

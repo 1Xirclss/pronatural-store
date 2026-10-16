@@ -18,7 +18,7 @@ export default function Register() {
   const password = watch('password');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
@@ -26,7 +26,7 @@ export default function Register() {
     try {
       const success = await registerCustomer(data);
       if (success) {
-        setShowVerifyModal(true);
+        setShowVerification(true);
       } else {
         toast.error('Error al registrar la cuenta');
       }
@@ -79,8 +79,11 @@ export default function Register() {
         <p className="text-right font-medium tracking-wider text-[#a5f3c4]">Cuidando tu salud naturalmente</p>
       </div>
     </div>
-  );  return (
+  );
+  return (
     <AuthLayout leftPanel={leftPanel}>
+      {!showVerification && (
+        <>
       <div className="mb-10">
         <p className="text-[10px] font-bold text-[#30b466] tracking-widest uppercase mb-2">Registro de Cliente</p>
         <h2 className="text-[36px] font-bold leading-none tracking-tighter text-brand-dark mb-3">CREAR CUENTA</h2>
@@ -212,16 +215,24 @@ export default function Register() {
           Al registrarte aceptas las políticas de privacidad y condiciones de uso de ProNatural.
         </p>
       </div>
-      {showVerifyModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-brand-bg p-8 max-w-md w-full border border-gray-200">
-            <h3 className="text-xl font-bold text-brand-dark mb-4">Verificar Cuenta</h3>
-            <p className="text-sm text-gray-500 mb-6">Hemos enviado un código a tu correo.</p>
-            <form onSubmit={handleVerify}>
+        </>
+      )}
+      {showVerification && (
+        <section aria-labelledby="verification-heading">
+            <p className="text-[10px] font-bold text-[#30b466] tracking-widest uppercase mb-2">Verificación de correo</p>
+            <h2 id="verification-heading" className="text-[36px] font-bold leading-none tracking-tighter text-brand-dark mb-3">VERIFICAR CUENTA</h2>
+            <p id="verification-description" className="text-sm text-gray-500 mb-8">Ingresa el código enviado a tu correo para completar el registro.</p>
+            <form onSubmit={handleVerify} className="space-y-6">
+              <label htmlFor="verification-code" className="block text-[9px] font-bold text-gray-500 tracking-[0.15em] uppercase">Código de verificación</label>
               <input
+                id="verification-code"
                 type="text"
-                placeholder="Código de verificación"
-                className="w-full bg-transparent border-b border-gray-200 py-2 mb-6 focus:outline-none focus:border-brand-dark text-center tracking-[0.5em]"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+                aria-describedby="verification-description"
+                placeholder="Ingresa tu código"
+                className="w-full bg-white border border-gray-200 px-4 py-3.5 focus:outline-none focus:border-brand-dark text-center tracking-widest"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
               />
@@ -233,8 +244,10 @@ export default function Register() {
                 {isVerifying ? 'Verificando...' : 'Verificar'}
               </button>
             </form>
-          </div>
-        </div>
+            <button type="button" disabled={isVerifying} onClick={() => { setShowVerification(false); setVerificationCode(''); }} className="mt-6 text-[10px] font-bold tracking-widest uppercase text-brand-dark disabled:opacity-50">
+              Volver al registro
+            </button>
+        </section>
       )}
     </AuthLayout>
   );

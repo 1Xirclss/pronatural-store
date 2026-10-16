@@ -14,23 +14,19 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      if (user?.role === 'Admin' || user?.role === 'Employee') {
-        navigate('/portal-seguro', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+    if (isAuthenticated && user?.role === 'Customer') {
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (data) => {
     try {
-      const success = await login(data);
+      const success = await login({ ...data, role: 'Customer' });
       if (!success) {
         toast.error('Credenciales incorrectas');
       }
-    } catch (error) {
-      toast.error('Error al iniciar sesión');
+    } catch {
+      // El contexto muestra el mensaje específico que devuelve la API.
     }
   };
   const leftPanel = (

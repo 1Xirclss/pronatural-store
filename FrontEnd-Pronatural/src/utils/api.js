@@ -166,9 +166,9 @@ export const api = {
   }),
 
   // Autenticación
-  login: (email, password) => apiRequest('/auth/login', {
+  login: (email, password, role) => apiRequest('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password, role })
   }),
   getProfile: () => apiRequest('/auth/profile'),
   updateProfile: (profileData) => apiRequest('/auth/profile', {

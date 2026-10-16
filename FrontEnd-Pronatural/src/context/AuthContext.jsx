@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (data) => {
     setLoading(true);
     try {
-      const res = await api.login(data.email, data.password);
+      const res = await api.login(data.email, data.password, data.role);
       if (res && res.token) {
         localStorage.setItem('authCookieFallback', res.token);
       }
